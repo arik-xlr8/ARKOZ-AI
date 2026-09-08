@@ -144,8 +144,8 @@ small {
 }
 .brand b {
   color: var(--green);
-  font-size: 18px;
-  font-weight: 600;
+  font-size: inherit;
+  font-weight: inherit;
 }
 .brand small {
   display: block;
