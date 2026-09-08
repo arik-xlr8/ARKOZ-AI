@@ -29,8 +29,8 @@ export interface Point {
         y="16"
         [attr.width]="720 - boundary()"
         height="184"
-        fill="#a2a0ff"
-        opacity=".045"
+        fill="#735fc3"
+        opacity=".07"
       />
       @for (tick of ticks(); track tick) {
         <line
@@ -38,7 +38,7 @@ export interface Point {
           x2="720"
           [attr.y1]="y(tick)"
           [attr.y2]="y(tick)"
-          stroke="#293840"
+          stroke="#e1e2e5"
         />
         <text x="44" [attr.y]="y(tick) + 4" text-anchor="end">
           {{ tick | number: "1.0-1" }}
@@ -49,20 +49,20 @@ export interface Point {
         x2="720"
         [attr.y1]="y(threshold())"
         [attr.y2]="y(threshold())"
-        stroke="#d3a653"
+        stroke="#b9780f"
         stroke-dasharray="4 5"
         opacity=".8"
       />
       <path
         [attr.d]="historyPath()"
         fill="none"
-        stroke="#53cdb6"
+        stroke="#e0002a"
         stroke-width="2.4"
       />
       <path
         [attr.d]="forecastPath()"
         fill="none"
-        stroke="#aaa5ff"
+        stroke="#735fc3"
         stroke-width="2.4"
         stroke-dasharray="6 4"
       />
@@ -71,7 +71,7 @@ export interface Point {
         [attr.x2]="boundary()"
         y1="16"
         y2="205"
-        stroke="#72818b"
+        stroke="#8b8e94"
         stroke-dasharray="3 4"
       />
       <text [attr.x]="boundary() + 7" y="29">ŞİMDİ</text>
