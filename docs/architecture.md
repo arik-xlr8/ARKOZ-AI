@@ -1,0 +1,15 @@
+# Architecture
+
+Angular 22 standalone UI → Express 5 API → FastAPI forecast provider. The API owns deterministic risk calculation, approved copilot context, day-end reports and maintenance workflows. In-memory repositories and a `SensorDataSource` interface isolate simulated inputs from future read-only historian/OPC-UA adapters. No control-system writes.
+
+The simulator has two modes. **Autonomous factory** advances every machine together, accumulates sensor-visible wear, varies eligible fault targets and timing from the seed, starts degradation events without operator injection and propagates smaller load effects through multiple stages of a cement-process dependency graph. **Demo/test** keeps deterministic manually selected faults for repeatable presentations and regression tests. A seed reproduces the same autonomous event order and sensor history.
+
+Every 15-minute sample runs a lightweight deterministic risk scan and records risk transitions at their actual simulated time. Explicit chart forecasts, machine-specific AI context and the 24-hour day-end outlook use the replaceable Python provider. The local configured provider is TimesFM 2.5; fleet requests are batched into one inference and long histories are capped to its latest 1024 samples. If loading, inference or the service fails, a named linear-trend provider keeps the application operational. This split keeps the three-second simulation responsive while reserving TimesFM for forecast work.
+
+At each 96-sample day boundary, the API snapshots current risk and summarized 24-hour forecasts. Existing threshold exceedances and predicted future crossings are represented separately. Gemini receives those summaries, process topology and recent risk transitions, never raw massive time-series arrays or hidden simulator fault plans. Strict Zod validation rejects HTML, definitive failure claims and safety-limit language. Calls are globally paced; short quota retry windows are honored and longer waits return the deterministic fallback immediately. Reports and risk transition events are stored for the active simulation run.
+
+Folders: `frontend/src` (views and charts), `backend/src/autonomous.ts` (degradation and process model), `backend/src/reports.ts` (daily/event reports), the remaining `backend/src` services and API, `forecast-service` (validated single/batch forecast API and providers), `docs`, and `scripts`.
+
+Versions verified 2026-09-08: Angular core 22.1.5 / CLI and build 22.1.7, TypeScript 6.0 (Angular-compatible, not latest TS 7), Express 5.2.1, Google GenAI 2.21.0, FastAPI 0.141.1. Local Node 20.18 is too old for Angular 22, so the root development dependency supplies Node 24.15 without modifying the global installation.
+
+Sources: https://angular.dev/reference/versions ; https://ai.google.dev/gemini-api/docs/structured-output ; https://github.com/google-research/timesfm ; https://huggingface.co/google/timesfm-2.5-200m-pytorch . TimesFM 3 weights are non-commercial/non-production; optional adapter targets Apache-2.0 TimesFM 2.5 using timesfm[torch]==2.0.2. Normal installation avoids large model dependencies. All model results are decision support.

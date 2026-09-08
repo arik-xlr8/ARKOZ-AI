@@ -1,0 +1,1081 @@
+<aside class="sidebar">
+  <a class="brand" href="#dashboard" (click)="navigate('Genel Bakış')"
+    ><img
+      class="brand-logo"
+      src="/branding/arkoz_logo.PNG"
+      alt=""
+      width="38"
+      height="38"
+    />
+    <div>ARKOZ <b>AI</b><small>FABRİKA ANALİTİĞİ</small></div></a
+  >
+  <div class="workspace-label">
+    ÇALIŞMA ALANI
+    <span>{{activeMode()==='autonomous'?'OTONOM':'TEST'}}</span>
+  </div>
+  <nav>
+    @for(item of pages;track item.name){<button
+      [class.active]="page()===item.name || (page()==='Ekipman detayı'&&item.name==='Ekipmanlar')"
+      (click)="navigate(item.name)"
+    >
+      <span class="nav-icon">{{item.icon}}</span
+      >{{item.name}}@if(item.name==='Alarmlar'&&activeAlerts()){<b
+        class="nav-count"
+        >{{activeAlerts()}}</b
+      >}@if(item.name==='Yapay Zekâ Asistanı'){<span class="ai-dot">YZ</span
+      >}</button
+    >}
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="connection"><i></i> Simülasyon bağlı</div>
+    <p>Analiz katmanı · Salt okunur</p>
+    <div class="profile">
+      <span>DM</span>
+      <div>Demo Operatörü<small>Bakım ekibi</small></div>
+      <b>⌄</b>
+    </div>
+  </div>
+</aside>
+<div class="shell">
+  <header class="topbar">
+    <div class="plant-selector">
+      <span class="plant-icon">▥</span><strong>Demo Çimento Fabrikası</strong
+      ><span class="muted">⌄</span><span class="top-divider"></span
+      ><span class="live"
+        ><i></i>{{dash()?.highRisk ? 'İnceleme gerekiyor' : 'Fabrika
+        çalışıyor'}}</span
+      >
+    </div>
+    <div class="top-right">
+      <span class="muted">Fabrika zamanı</span
+      ><span>{{dash()?.lastUpdate|date:'d MMM, HH:mm'}}</span
+      ><span class="demo-badge">SİMÜLE VERİ</span>
+    </div>
+  </header>
+  <main>
+    <div class="breadcrumb">
+      Çalışma alanı <span>/</span> {{page()==='Ekipman detayı'?'Ekipmanlar /
+      '+selected()?.name:page()}}
+    </div>
+    <div class="page-heading">
+      <div>
+        <div class="eyebrow">KESTİRİMCİ BAKIM VE FABRİKA ANALİTİĞİ</div>
+        <h1>
+          {{page()==='Ekipman detayı'?selected()?.name:page()==='Genel
+          Bakış'?'Fabrika genel durumu':page()==='Yapay Zekâ Asistanı'?'Fabrika
+          Asistanı':page()}}
+        </h1>
+        <p>{{pageDescription()}}</p>
+      </div>
+      <div class="heading-actions">
+        @if(factoryCalendar(); as calendar){
+        <section
+          class="factory-calendar"
+          [attr.aria-label]="calendar.month + ' ' + calendar.year + ' fabrika takvimi'"
+        >
+          <strong class="calendar-month">{{calendar.month}}</strong>
+          <div class="calendar-viewport">
+            <div
+              class="calendar-track"
+              [style.transform]="'translate3d(' + calendar.shift + 'px, 0, 0)'"
+            >
+              @for(day of calendar.days; track day.iso){
+              <time
+                class="calendar-day"
+                [class.past]="day.distance < 0"
+                [class.current]="day.distance === 0"
+                [class.future]="day.distance > 0"
+                [attr.datetime]="day.iso"
+                [attr.aria-current]="day.distance === 0 ? 'date' : null"
+                [attr.aria-hidden]="day.distance < -2 || day.distance > 2"
+              >
+                <span>{{day.weekday}}</span><b>{{day.day}}</b>
+              </time>
+              }
+            </div>
+          </div>
+          <span class="calendar-year">{{calendar.year}}</span>
+        </section>
+        }
+        <button
+          class="secondary refresh-button"
+          title="Sunucudaki en güncel fabrika, alarm ve bakım verilerini getirir"
+          (click)="refresh()"
+        >
+          ↻ <span class="refresh-long">Verileri yenile</span
+          ><span class="refresh-short">Yenile</span>
+        </button>
+      </div>
+    </div>
+    @if(error()){
+    <div class="banner error" role="alert">
+      {{error()}} <button (click)="refresh()">Tekrar dene</button>
+    </div>
+    } @if(notice()){
+    <div class="banner success" role="status">
+      {{notice()}}<button aria-label="Bildirimi kapat" (click)="notice.set('')">
+        ×
+      </button>
+    </div>
+    }
+    <section
+      class="simulation-strip"
+      [class.autonomous]="simulationMode==='autonomous'"
+    >
+      <div class="simulation-heading-row">
+        <div class="simulation-title">
+          <span>◈</span>
+          <div>
+            <strong>Fabrika simülasyonu</strong>
+            <small>{{simulationStatus()}}</small>
+          </div>
+        </div>
+        <div class="mode-switch" role="group" aria-label="Simülasyon modu">
+          <button
+            type="button"
+            [class.active]="simulationMode==='autonomous'"
+            [attr.aria-pressed]="simulationMode==='autonomous'"
+            (click)="simulationMode='autonomous'"
+          >
+            Otonom fabrika
+          </button>
+          <button
+            type="button"
+            [class.active]="simulationMode==='scenario'"
+            [attr.aria-pressed]="simulationMode==='scenario'"
+            (click)="simulationMode='scenario'"
+          >
+            Demo / test
+          </button>
+        </div>
+      </div>
+      <div class="simulation-config">
+        @if(simulationMode==='autonomous'){
+        <label class="seed-field" for="simulation-seed">
+          <span>Simülasyon tohumu</span>
+          <input
+            id="simulation-seed"
+            name="simulationSeed"
+            type="number"
+            min="1"
+            max="2147483647"
+            step="1"
+            [(ngModel)]="simulationSeed"
+          />
+        </label>
+        <p class="simulation-explanation">
+          Tüm fabrika sürekli üretir. Yük ve yıpranma birikir; arızalar doğal
+          olasılıklarla kendiliğinden gelişir. Aynı tohum aynı olay akışını
+          tekrar oluşturur.
+        </p>
+        } @else {
+        <label class="scenario-field" for="scenario">
+          <span>Kontrollü arıza senaryosu</span>
+          <select id="scenario" [(ngModel)]="scenarioId">
+            @for(s of scenarios();track s.id){
+            <option [value]="s.id">{{s.name}}</option>
+            }
+          </select>
+        </label>
+        <p class="simulation-explanation">
+          Sunum ve doğrulama için seçilen arıza davranışını hedef ekipmanda
+          tekrar edilebilir biçimde üretir.
+        </p>
+        }
+      </div>
+      <div class="simulation-actions">
+        <button class="primary" [disabled]="busy()" (click)="activate()">
+          ▶ {{simulationMode==='autonomous'?'Otonom fabrikayı başlat':'Testi
+          başlat'}}
+        </button>
+        <button
+          class="secondary"
+          (click)="pause()"
+          [disabled]="busy() || (dash()?.simulation?.step||0)>=(dash()?.simulation?.maxSteps||0)"
+        >
+          {{dash()?.simulation?.running?'Ⅱ Duraklat':'▶ Devam et'}}
+        </button>
+        <button
+          class="secondary reset-button"
+          [disabled]="busy()"
+          (click)="resetSimulation()"
+        >
+          ↺ Başa al
+        </button>
+        <div class="step-actions">
+          <button
+            class="text-button"
+            [disabled]="busy() || (dash()?.simulation?.step||0)>=(dash()?.simulation?.maxSteps||0)"
+            (click)="advance()"
+          >
+            +1 saat
+          </button>
+          @if(activeMode()==='autonomous'){
+          <button
+            class="text-button"
+            [disabled]="busy() || (dash()?.simulation?.step||0)>=(dash()?.simulation?.maxSteps||0)"
+            (click)="advanceDay()"
+          >
+            +1 gün
+          </button>
+          }
+        </div>
+        @if(activeMode()==='autonomous'){
+        <span class="step-count"
+          >Gün {{dash()?.simulation?.day||1}} · {{dash()?.simulation?.step||0}}
+          adım</span
+        >
+        } @else {
+        <span class="step-count"
+          >Adım {{dash()?.simulation?.step||0}} / 32</span
+        >
+        }
+      </div>
+    </section>
+    @if(!dash()){
+    <div class="empty">Fabrika analiz servisine bağlanılıyor…</div>
+    } @if(page()==='Genel Bakış'&&dash();as d){
+    <section class="kpi-grid">
+      <div class="kpi">
+        <span>Fabrika sağlık puanı <b>◉</b></span>
+        <div class="kpi-number">{{d.plantHealth}}<small>/100</small></div>
+        <div class="mini-track"><i [style.width.%]="d.plantHealth"></i></div>
+        <small>Ekipman risk sinyallerinden hesaplanır</small>
+      </div>
+      <div class="kpi">
+        <span>Bağlı ekipmanlar <b>▤</b></span>
+        <div class="kpi-number">{{d.online}}<small>/ 10</small></div>
+        <small class="green">● Tüm ekipmanlardan veri alınıyor</small>
+      </div>
+      <div class="kpi">
+        <span>Yüksek riskli ekipmanlar <b>△</b></span>
+        <div class="kpi-number amber">
+          {{d.highRisk.toString().padStart(2,'0')}}
+        </div>
+        <small>{{d.mediumRisk}} ekipman orta riskli</small>
+      </div>
+      <div class="kpi">
+        <span>Kritik alarmlar <b>!</b></span>
+        <div class="kpi-number" [class.red]="d.criticalAlerts">
+          {{d.criticalAlerts.toString().padStart(2,'0')}}
+        </div>
+        <small>Açık veya görüldü olarak işaretli</small>
+      </div>
+      <div class="kpi">
+        <span>Öngörülen riskler <b>⌁</b></span>
+        <div class="kpi-number">
+          {{d.predictedRisks.toString().padStart(2,'0')}}
+        </div>
+        <small>Uyarı eşiği aşımı · Gelecek 4 saat</small>
+      </div>
+      <div class="kpi">
+        <span>Öneriler <b>☷</b></span>
+        <div class="kpi-number">
+          {{d.openRecommendations.toString().padStart(2,'0')}}
+        </div>
+        <small>Bakım görevi oluşturulması bekleniyor</small>
+      </div>
+    </section>
+    <div class="overview-layout">
+      <section class="panel asset-panel">
+        <div class="section-heading">
+          <div>
+            <h2>Ekipman risk özeti</h2>
+            <p>Mevcut ve öngörülen riske göre sıralanır</p>
+          </div>
+          <span class="pill neutral">10 EKİPMAN</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Ekipman / Konum</th>
+                <th>Durum</th>
+                <th>Sağlık</th>
+                <th>Risk seviyesi</th>
+                <th>Başlıca sinyal</th>
+                <th>Eğilim</th>
+                <th>Güncelleme</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for(m of machines();track m.id){
+              <tr (click)="openMachine(m)">
+                <td>
+                  <button
+                    class="asset-link"
+                    (click)="$event.stopPropagation();openMachine(m)"
+                  >
+                    <span class="machine-icon"
+                      >{{m.type==='Motor'?'⚙':m.type==='Fan'?'✣':'▥'}}</span
+                    ><span>{{m.name}}<small>{{m.location}}</small></span>
+                  </button>
+                </td>
+                <td>
+                  <span class="status"
+                    ><i [class.warning]="m.riskLevel!=='LOW'"></i
+                    >{{tr(m.status)}}</span
+                  >
+                </td>
+                <td>
+                  <div class="health-cell">
+                    <strong>{{m.healthScore}}</strong>
+                    <div>
+                      <i
+                        [style.width.%]="m.healthScore"
+                        [class.warning]="m.riskLevel!=='LOW'"
+                      ></i>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="pill" [attr.data-risk]="m.riskLevel"
+                    >{{tr(m.riskLevel)}}</span
+                  >
+                </td>
+                <td class="issue-cell">{{m.mainIssue}}</td>
+                <td>
+                  <span [class.amber]="m.riskLevel!=='LOW'">{{trend(m)}}</span>
+                </td>
+                <td class="muted">{{m.lastUpdate|date:'HH:mm'}}</td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="panel-footer">
+          <span
+            ><i class="tiny-dot"></i> Simülasyonda veriler 3 saniyede bir
+            güncellenir</span
+          ><button class="text-button" (click)="navigate('Ekipmanlar')">
+            Tüm ekipmanlar →
+          </button>
+        </div>
+      </section>
+      <div class="right-stack">
+        <section class="panel focus-panel">
+          <div class="section-heading">
+            <h2><span class="purple">✧</span> Analiz özeti</h2>
+            <span class="pill purple-pill">CANLI</span>
+          </div>
+          <p class="brief-lead">
+            {{d.highRisk?'Yükselen risk ayrıntılı inceleme
+            gerektiriyor.':'Fabrikanız genel olarak normal aralıkta.'}}
+          </p>
+          <p class="muted">
+            {{d.highRisk?'Öne çıkan sinyalleri inceleyin ve kontrol
+            önceliklerini bakım ekibinizle doğrulayın.':'Demoda hafif bir güç
+            anomalisi bulunur. Riskin değişimini görmek için bir senaryo
+            başlatın.'}}
+          </p>
+          @for(m of attention().slice(0,3);track m.id){<button
+            class="focus-item"
+            (click)="openMachine(m)"
+          >
+            <span class="pill" [attr.data-risk]="m.riskLevel"
+              >{{tr(m.riskLevel)}}</span
+            ><strong>{{m.name}}</strong><small>{{m.mainIssue}}</small
+            ><span>Ekipmanı incele →</span></button
+          >}<button
+            class="copilot-button"
+            (click)="navigate('Yapay Zekâ Asistanı')"
+          >
+            ✧ Fabrika Asistanına sor ↗
+          </button>
+        </section>
+        <section class="panel workflow">
+          <h2>Sinyalden bakım işlemine</h2>
+          <p><span>01</span> Tespit et ve tahmin et <b>✓</b></p>
+          <p><span>02</span> Açıkla ve önceliklendir <b>✓</b></p>
+          <p><span>03</span> Doğrula ve görev oluştur <b>→</b></p>
+          <small>Tüm işlemlerde kontrol insandadır.</small>
+        </section>
+      </div>
+    </div>
+    } @if(page()==='Ekipmanlar'){
+    <div class="section-heading">
+      <h2>Ekipman listesi <span class="muted">/ 10 ekipman</span></h2>
+      <input
+        aria-label="Ekipman ara"
+        placeholder="Ekipman veya konum ara…"
+        [(ngModel)]="search"
+      />
+    </div>
+    <div class="asset-grid">
+      @for(m of filteredMachines();track m.id){<button
+        class="panel asset-card"
+        (click)="openMachine(m)"
+      >
+        <div>
+          <span class="machine-icon">▥</span
+          ><span class="pill" [attr.data-risk]="m.riskLevel"
+            >{{tr(m.riskLevel)}}</span
+          >
+        </div>
+        <h2>{{m.name}}</h2>
+        <p>{{m.location}} · {{m.type}}</p>
+        <div class="asset-score">
+          {{m.healthScore}}<small>/100 sağlık</small>
+        </div>
+        <div class="mini-track"><i [style.width.%]="m.healthScore"></i></div>
+        <p>{{m.mainIssue}}</p>
+        <small
+          >{{m.operatingHours|number}} çalışma saati · Son bakım
+          {{m.lastMaintenanceDate|date:'dd.MM.yyyy'}}</small
+        ></button
+      >}
+    </div>
+    } @if(page()==='Ekipman detayı'&&selected();as m){
+    <div class="detail-top">
+      <span class="pill" [attr.data-risk]="m.riskLevel"
+        >{{tr(m.riskLevel)}} RİSK</span
+      ><strong>Sağlık {{m.healthScore}} / 100</strong
+      ><span class="muted">{{m.operatingHours|number}} çalışma saati</span
+      ><span class="muted"
+        >Son bakım {{m.lastMaintenanceDate|date:'dd.MM.yyyy'}}</span
+      ><button class="secondary" (click)="navigate('Ekipmanlar')">
+        ← Ekipman listesi
+      </button>
+    </div>
+    <div class="sensor-grid">
+      @for(s of m.risk.signals;track s.metric){
+      <div class="panel sensor">
+        <span>{{s.label}}</span
+        ><strong>{{s.current|number:'1.0-2'}} <small>{{s.unit}}</small></strong
+        ><span [class.amber]="s.severity!=='LOW'"
+          >{{s.ratePerHour>0?'+':''}}{{s.ratePerHour|number:'1.0-2'}}
+          {{s.unit}}/saat</span
+        ><small
+          >Normal değer {{s.baseline|number:'1.0-2'}} · Uyarı
+          {{s.warning|number:'1.0-2'}}</small
+        >
+      </div>
+      }
+    </div>
+    <div class="detail-layout">
+      <div>
+        @for(s of detailCharts();track s.metric){
+        <section class="panel chart-panel">
+          <sensor-chart
+            [history]="s.history"
+            [forecast]="forecasts()[s.metric]?.forecast||[]"
+            [label]="s.label"
+            [unit]="s.unit"
+            [threshold]="s.warning"
+            [model]="forecasts()[s.metric]?.model||'Yükleniyor'"
+          />
+        </section>
+        }
+        <section class="panel">
+          <div class="section-heading">
+            <h2>Bakım geçmişi</h2>
+            <span class="muted">SİMÜLE KAYITLAR</span>
+          </div>
+          @for(h of m.maintenanceHistory;track h.date){
+          <div class="history-item">
+            <time>{{h.date|date:'dd.MM.yyyy'}}</time>
+            <div>
+              <strong>{{h.title}}</strong>
+              <p>{{h.outcome}}</p>
+            </div>
+          </div>
+          }
+        </section>
+      </div>
+      <section class="panel assessment">
+        <div class="section-heading">
+          <h2><span class="purple">✧</span> Yapay zekâ değerlendirmesi</h2>
+          <button class="text-button" [disabled]="busy()" (click)="analyze()">
+            ↻ Güncelle
+          </button>
+        </div>
+        @if(assessment();as a){<span class="provider-label"
+          >{{a.provider==='gemini'?'GEMINI ANALİZİ':'KURAL TABANLI YEDEK'}} ·
+          {{tr(a.urgency)}}</span
+        ><small class="assessment-asof"
+          >Veri zamanı: {{a.asOf|date:'HH:mm'}}{{a.asOf!==m.lastUpdate?' · Yeni
+          ölçümler var; yeniden değerlendirmek için Güncelle’ye basın.':''}}</small
+        >
+        <p class="assessment-summary">{{a.summary}}</p>
+        <h3>Olası nedenler</h3>
+        @for(c of a.probableCauses;track c.cause){
+        <div class="cause">
+          <strong>{{c.cause}}</strong
+          ><small>{{tr(c.confidence)}} güven düzeyinde olasılık</small>
+          <p>{{c.reasoning}}</p>
+        </div>
+        }
+        <h3>Önerilen işlemler</h3>
+        @for(action of a.recommendedActions;track action.priority){
+        <div class="action-item">
+          <span>{{action.priority}}</span>
+          <div>
+            <strong>{{action.action}}</strong>
+            <p>{{action.reason}}</p>
+          </div>
+        </div>
+        }<button
+          class="primary full"
+          [disabled]="busy()"
+          (click)="createTask(m,a.recommendedActions[0].action)"
+        >
+          ＋ Bakım görevi oluştur
+        </button>
+        <p class="trust-note">
+          Yapay zekâ önerisidir. İşlem öncesinde bakım personeli tarafından
+          doğrulanmalıdır.
+        </p>
+        @if(a.fallbackReason){
+        <p class="muted">{{tr(a.fallbackReason)}}</p>
+        }}@else{
+        <p class="muted">
+          {{busy()?'Değerlendirme hazırlanıyor…':'Son ölçümleri açıklamak için
+          değerlendirmeyi güncelleyin.'}}
+        </p>
+        <button class="primary" (click)="analyze()" [disabled]="busy()">
+          Değerlendirme oluştur</button
+        >}<button
+          class="copilot-button"
+          (click)="navigate('Yapay Zekâ Asistanı');ask(m.name+' neden yüksek riskli?')"
+        >
+          Bu ekipmanı asistana sor →
+        </button>
+      </section>
+    </div>
+    } @if(page()==='Alarmlar'){
+    <div class="section-heading">
+      <h2>
+        Durum alarmları <span class="muted">/ {{activeAlerts()}} etkin</span>
+      </h2>
+      <select aria-label="Alarm durumu filtresi" [(ngModel)]="alertFilter">
+        <option value="ACTIVE">Etkin alarmlar</option>
+        <option value="OPEN">Açık</option>
+        <option value="ACKNOWLEDGED">Görüldü</option>
+        <option value="RESOLVED">Çözüldü</option>
+        <option value="ALL">Tüm geçmiş</option>
+      </select>
+    </div>
+    <section class="panel table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Önem seviyesi</th>
+            <th>Ekipman / Sinyal</th>
+            <th>Tespit zamanı</th>
+            <th>Mevcut → Tahmin tepe değeri</th>
+            <th>Neden</th>
+            <th>Durum</th>
+            <th>İşlem</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for(a of filteredAlerts();track a.id){
+          <tr>
+            <td>
+              <span class="pill" [attr.data-risk]="a.severity"
+                >{{tr(a.severity)}}</span
+              >
+            </td>
+            <td>
+              <button class="text-button" (click)="openById(a.machineId)">
+                {{a.machine}}</button
+              ><small>{{tr(a.metric)}}</small>
+            </td>
+            <td>{{a.timestamp|date:'d MMM, HH:mm'}}</td>
+            <td>
+              {{a.current|number:'1.0-2'}} → {{a.predicted|number:'1.0-2'}}
+              {{a.unit}}
+            </td>
+            <td>{{a.reason}}</td>
+            <td><span class="pill neutral">{{tr(a.status)}}</span></td>
+            <td>
+              @if(a.status==='OPEN'){<button
+                class="secondary"
+                (click)="acknowledge(a.id)"
+              >
+                Görüldü olarak işaretle</button
+              >}@else{<span class="muted"
+                >{{a.status==='RESOLVED'?'Normal aralığa döndü':'İzleme devam
+                ediyor'}}</span
+              >}
+            </td>
+          </tr>
+          }@empty{
+          <tr>
+            <td colspan="7" class="empty">Bu filtreye uygun alarm yok.</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+    } @if(page()==='Tahminler'){
+    <section class="panel forecast-controls">
+      <label
+        >Ekipman<select
+          [(ngModel)]="forecastMachine"
+          (ngModelChange)="changeForecastMachine()"
+        >
+          @for(m of machines();track m.id){
+          <option [value]="m.id">{{m.name}}</option>
+          }
+        </select></label
+      ><label
+        >Sensör<select
+          [(ngModel)]="forecastMetric"
+          (ngModelChange)="loadForecast()"
+        >
+          @for(s of forecastSensors();track s.metric){
+          <option [value]="s.metric">{{s.label}}</option>
+          }
+        </select></label
+      ><label
+        >Tahmin süresi<select
+          [(ngModel)]="horizon"
+          (ngModelChange)="loadForecast()"
+        >
+          <option [ngValue]="4">1 saat</option>
+          <option [ngValue]="16">4 saat</option>
+          <option [ngValue]="48">12 saat</option>
+          <option [ngValue]="96">24 saat</option>
+        </select></label
+      >
+    </section>
+    @if(forecastSensor();as s){
+    <section class="panel large-chart">
+      <div class="section-heading">
+        <h2>Sensör tahmini</h2>
+        <span class="pill purple-pill">{{horizon/4}} SAATLİK TAHMİN</span>
+      </div>
+      <sensor-chart
+        [history]="s.history"
+        [forecast]="forecasts()[s.metric]?.forecast||[]"
+        [label]="s.label"
+        [unit]="s.unit"
+        [threshold]="s.warning"
+        [model]="forecasts()[s.metric]?.model||'Yükleniyor'"
+      />
+      <div class="crossing"><span>⌁</span>{{crossing()}}</div>
+      <p class="trust-note">
+        Uyarı eşiği: {{s.warning|number:'1.0-2'}} {{s.unit}} · SİMÜLASYON
+        AYARLARI. Eşik aşımları 15 dakikalık örneklerle hesaplanır.
+      </p>
+      @if(forecasts()[s.metric]?.fallbackReason){
+      <p class="muted">{{tr(forecasts()[s.metric]?.fallbackReason || '')}}</p>
+      }
+    </section>
+    } } @if(page()==='Günlük Analizler'){
+    <div class="reports-layout">
+      <section class="daily-reports">
+        <div class="reports-section-heading">
+          <div>
+            <span class="eyebrow">OTOMATİK GÜN SONU DEĞERLENDİRMESİ</span>
+            <h2>Günlük fabrika analizleri</h2>
+          </div>
+          <button
+            class="secondary"
+            [disabled]="reportsLoading()"
+            (click)="loadReports()"
+          >
+            {{reportsLoading()?'Yükleniyor…':'↻ Raporları yenile'}}
+          </button>
+        </div>
+        @if(reportsLoading()&&!dailyReports().length){
+        <div class="panel reports-empty">
+          <span class="report-empty-icon">◌</span>
+          <h2>Analizler yükleniyor</h2>
+          <p>Kaydedilmiş günlük fabrika raporları getiriliyor.</p>
+        </div>
+        } @for(report of dailyReports();track report.id){
+        <article class="panel daily-report-card">
+          <header class="daily-report-header">
+            <div class="report-day">
+              <span>GÜN</span><strong>{{report.day}}</strong>
+            </div>
+            <div>
+              <h2>{{report.date|date:'d MMMM yyyy'}}</h2>
+              <p>
+                {{report.generatedAt|date:'HH:mm'}} tarihinde oluşturuldu ·
+                <span class="provider-label"
+                  >Yorum: {{tr(report.provider)}} · Tahmin:
+                  {{translatedModels(report.forecastModels)}}</span
+                >
+              </p>
+              @if(report.fallbackReason){
+              <p class="muted">{{report.fallbackReason}}</p>
+              }
+            </div>
+            <div class="report-health">
+              <span>Fabrika sağlığı</span>
+              <strong [class.amber]="report.plantHealth<80"
+                >{{report.plantHealth}}<small>/100</small></strong
+              >
+            </div>
+          </header>
+          <div class="daily-report-body">
+            <section class="report-narrative">
+              <div>
+                <h3>Günün değerlendirmesi</h3>
+                <p>{{report.summary}}</p>
+              </div>
+              <div class="report-outlook">
+                <span>⌁</span>
+                <div>
+                  <h3>Sonraki gün görünümü</h3>
+                  <p>{{report.outlook}}</p>
+                </div>
+              </div>
+              <div class="report-focus">
+                <h3>Önerilen odak noktaları</h3>
+                @for(item of report.recommendedFocus;track $index){
+                <p><span>{{$index+1}}</span>{{item}}</p>
+                } @empty {
+                <p class="muted">Bu gün için ek kontrol önerisi bulunmuyor.</p>
+                }
+              </div>
+            </section>
+            <section class="report-assets">
+              <div class="report-block-title">
+                <h3>Öncelikli ekipmanlar</h3>
+                <span>{{report.criticalAssets.length}} ekipman</span>
+              </div>
+              @for(asset of report.criticalAssets;track asset.machineId){
+              <button
+                class="report-asset"
+                type="button"
+                (click)="openById(asset.machineId)"
+              >
+                <span class="machine-icon">▥</span>
+                <span class="report-asset-copy">
+                  <strong>{{asset.machine}}</strong>
+                  <small>{{asset.summary}}</small>
+                </span>
+                <span class="report-asset-score">
+                  <span class="pill" [attr.data-risk]="asset.riskLevel"
+                    >{{tr(asset.riskLevel)}}</span
+                  >
+                  <small>{{asset.healthScore}}/100</small>
+                </span>
+              </button>
+              } @empty {
+              <div class="report-all-clear">
+                <span>✓</span>
+                <p>
+                  <strong>Kritik ekipman bulunmuyor</strong>
+                  <small>Tüm ekipmanlar normal izleme aralığında.</small>
+                </p>
+              </div>
+              }
+            </section>
+          </div>
+        </article>
+        } @empty { @if(!reportsLoading()){
+        <div class="panel reports-empty">
+          <span class="report-empty-icon">▧</span>
+          <h2>Henüz günlük analiz oluşmadı</h2>
+          <p>
+            Otonom fabrikayı çalıştırın. Her simülasyon gününün sonunda o günün
+            verileriyle analiz ve ertesi gün görünümü burada kaydedilir.
+          </p>
+          <button
+            class="primary"
+            type="button"
+            (click)="simulationMode='autonomous'; activate()"
+          >
+            ▶ Otonom fabrikayı başlat
+          </button>
+        </div>
+        } }
+      </section>
+      <aside class="panel event-reports">
+        <div class="event-heading">
+          <div>
+            <span class="eyebrow">RİSK GÜNLÜĞÜ</span>
+            <h2>Önemli olaylar</h2>
+          </div>
+          <span class="event-count">{{eventReports().length}}</span>
+        </div>
+        <p class="event-intro">
+          Ekipman risk seviyesi değiştiğinde olay otomatik kaydedilir.
+        </p>
+        <div class="event-timeline">
+          @for(event of eventReports();track event.id){
+          <article class="event-item">
+            <span class="event-marker" [attr.data-risk]="event.toRisk"></span>
+            <time [attr.datetime]="event.timestamp"
+              >{{event.timestamp|date:'d MMM · HH:mm'}}</time
+            >
+            <button type="button" (click)="openById(event.machineId)">
+              {{event.machine}} ↗
+            </button>
+            <div class="risk-transition">
+              <span class="pill" [attr.data-risk]="event.fromRisk"
+                >{{tr(event.fromRisk)}}</span
+              ><b>→</b
+              ><span class="pill" [attr.data-risk]="event.toRisk"
+                >{{tr(event.toRisk)}}</span
+              >
+            </div>
+            <p>{{event.summary}}</p>
+          </article>
+          } @empty {
+          <div class="events-empty">
+            <span>✓</span>
+            <strong>Risk değişimi yok</strong>
+            <p>Yeni bir risk olayı oluştuğunda burada görünecek.</p>
+          </div>
+          }
+        </div>
+      </aside>
+    </div>
+    } @if(page()==='Bakım'){
+    <div class="section-heading">
+      <h2>Önerilen kontroller</h2>
+      <span class="muted">Görev oluşturmadan önce önerileri doğrulayın</span>
+    </div>
+    <div class="recommendation-grid">
+      @for(m of attention();track m.id){
+      <section class="panel recommendation">
+        <span class="pill" [attr.data-risk]="m.riskLevel"
+          >{{tr(m.riskLevel)}} ÖNCELİK</span
+        >
+        <h2>{{m.name}}</h2>
+        <p>{{m.mainIssue}}</p>
+        <div>
+          <button class="secondary" (click)="openMachine(m)">
+            Verileri incele</button
+          ><button class="primary" [disabled]="busy()" (click)="createTask(m)">
+            ＋ Bakım görevi oluştur
+          </button>
+        </div>
+      </section>
+      }@empty{
+      <div class="empty">
+        Yüksek risk nedeniyle önerilen kontrol bulunmuyor.
+      </div>
+      }
+    </div>
+    <section class="panel">
+      <div class="section-heading">
+        <h2>Bakım görevleri</h2>
+        <span class="pill neutral">{{tasks().length}} GÖREV</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Görev / Ekipman</th>
+              <th>Öncelik</th>
+              <th>Oluşturulma</th>
+              <th>Öneren</th>
+              <th>Durum</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(t of tasks();track t.id){
+            <tr>
+              <td><strong>{{t.title}}</strong><small>{{t.machine}}</small></td>
+              <td>
+                <span class="pill" [attr.data-risk]="t.priority"
+                  >{{tr(t.priority)}}</span
+                >
+              </td>
+              <td>{{t.createdAt|date:'d MMM, HH:mm'}}</td>
+              <td>{{t.recommendedBy}}</td>
+              <td>
+                <select
+                  [attr.aria-label]="'Görev durumu:  '+t.title"
+                  [ngModel]="t.status"
+                  (ngModelChange)="updateTask(t,$event)"
+                >
+                  <option value="OPEN">Açık</option>
+                  <option value="IN_PROGRESS">Devam ediyor</option>
+                  <option value="COMPLETED">Tamamlandı</option>
+                </select>
+              </td>
+            </tr>
+            }@empty{
+            <tr>
+              <td colspan="5" class="empty">
+                Henüz görev yok. Bir öneriden veya ekipman değerlendirmesinden
+                kontrol görevi oluşturun.
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel maintenance-history">
+      <div class="section-heading">
+        <h2>Servis geçmişi</h2>
+        <span class="muted">Tüm ekipmanlar · Simüle kayıtlar</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Tarih</th>
+              <th>Ekipman</th>
+              <th>Yapılan işlem</th>
+              <th>Sonuç</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(h of history();track $index){
+            <tr>
+              <td>{{h.date|date:'dd.MM.yyyy'}}</td>
+              <td>{{h.machine}}</td>
+              <td>{{h.title}}</td>
+              <td>{{h.outcome}}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    } @if(page()==='Yapay Zekâ Asistanı'){
+    <div class="copilot-layout">
+      <section class="panel chat-panel">
+        <div class="section-heading">
+          <h2><span class="purple">✧</span> Fabrika analiz asistanı</h2>
+          <span class="pill neutral">ONAYLI FABRİKA VERİLERİ</span>
+        </div>
+        <div class="messages" aria-live="polite">
+          @if(!messages().length){
+          <div class="chat-welcome">
+            <span>✧</span>
+            <h2>Neyi incelemek istersiniz?</h2>
+            <p>
+              Riskleri, sensör değişimlerini ve bakım önceliklerini
+              inceleyin.<br />Her yanıt güncel simülasyon verilerine dayanır.
+            </p>
+          </div>
+          }@for(m of messages();track $index){
+          <article class="message" [class.user]="m.role==='user'">
+            <small
+              >{{m.role==='user'?'SİZ':m.provider==='gemini'?'FABRİKA ASİSTANI ·
+              GEMINI':'FABRİKA ASİSTANI · KURAL TABANLI YEDEK'}}</small
+            >
+            <p>{{m.text}}</p>
+            @if(m.sources?.length){
+            <div class="sources">
+              @for(s of m.sources;track s.machineId){<button
+                (click)="openById(s.machineId)"
+              >
+                ↗ {{s.name}} · {{s.timestamp|date:'HH:mm'}}</button
+              >}
+            </div>
+            }
+          </article>
+          }@if(chatBusy()){
+          <p class="muted">Fabrika verileri inceleniyor…</p>
+          }
+        </div>
+        <form class="chat-form" (ngSubmit)="ask()">
+          <input
+            name="question"
+            aria-label="Fabrika Asistanına sor"
+            [(ngModel)]="chatInput"
+            maxlength="1500"
+            placeholder="Bir ekipman, eğilim veya kontrol önceliği hakkında sorun…"
+          /><button
+            class="primary"
+            type="submit"
+            [disabled]="chatBusy()||!chatInput.trim()"
+          >
+            Gönder ↑
+          </button>
+        </form>
+        <p class="trust-note">
+          Yanıtlar karar desteği sağlar. Önerileri yetkin bakım personeliyle
+          doğrulayın.
+        </p>
+      </section>
+      <aside class="panel prompt-panel">
+        <h2>Bir soruyla başlayın</h2>
+        @for(q of ['Fırın Ana Motoru neden yüksek riskli?','Bugün hangi
+        ekipmanları kontrol etmeliyim?','Fırın Çekiş Fanında son 24 saatte ne
+        değişti?','Titreşimi en hızlı artan ekipman hangisi?','Bakım ekibi neye
+        odaklanmalı?'];track q){<button
+          [disabled]="chatBusy()"
+          (click)="ask(q)"
+        >
+          {{q}} <span>↗</span></button
+        >}
+        <h3>Kullanılabilen veriler</h3>
+        <p>✓ Ekipman bilgileri ve risk sinyalleri</p>
+        <p>✓ Sensör geçmişi ve tahminler</p>
+        <p>✓ Bakım ve servis kayıtları</p>
+        <small
+          >Doğrudan makine kontrolü veya harici fabrika verisi
+          kullanılmaz.</small
+        >
+      </aside>
+    </div>
+    } @if(page()==='Ayarlar'&&settings();as s){
+    <section class="panel settings">
+      <h2>Demo ayarları</h2>
+      <dl>
+        <dt>Veri kaynağı</dt>
+        <dd>
+          {{s.dataSource}} · 15 dakikalık örnekler
+        </dd>
+        <dt>Veri saklama</dt>
+        <dd>{{s.storage}}</dd>
+        <dt>Yapay zekâ yorumu</dt>
+        <dd>
+          {{s.geminiConfigured?'Gemini yapılandırıldı; şema doğrulaması ve kural tabanlı hata
+          yedeği etkin':'Kural tabanlı yedek · Gemini için sunucuda
+          GEMINI_API_KEY ayarlayın'}}
+        </dd>
+        <dt>Tahminleme</dt>
+        <dd>
+          Yapılandırılan sağlayıcı: {{tr(s.forecastProvider)}} · Hızlı risk taraması yerel eğilim
+          modeliyle, grafik ve günlük tahminler Python servisiyle çalışır · Kullanılan gerçek
+          model her grafikte ve günlük raporda gösterilir
+        </dd>
+        <dt>Entegrasyonlar</dt>
+        <dd>
+          Gelecekteki PLC, SCADA, OPC-UA, proses veri arşivi ve CMMS
+          bağlantıları için salt okunur adaptör yapısı
+        </dd>
+      </dl>
+      <div class="banner">{{s.thresholdLabel}}</div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Ekipman</th>
+              <th>Sensör</th>
+              <th>Normal değer</th>
+              <th>Uyarı</th>
+              <th>Kritik</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(m of s.sensors;track m.machine){@for(sensor of m.sensors;track
+            sensor.metric){
+            <tr>
+              <td>{{m.machine}}</td>
+              <td>{{sensor.label}}</td>
+              <td>{{sensor.base|number:'1.0-2'}} {{sensor.unit}}</td>
+              <td>{{sensor.warning|number:'1.0-2'}} {{sensor.unit}}</td>
+              <td>{{sensor.critical|number:'1.0-2'}} {{sensor.unit}}</td>
+            </tr>
+            }}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    }
+    <footer>
+      <span>◈ ARKOZ AI <b>·</b> Demo analiz katmanı</span>
+      <p>
+        Yapay zekâ ve tahmin çıktıları karar desteği sağlar. Bakım ve işletme
+        işlemleri, yetkin personel ve mevcut tesis güvenlik prosedürleri
+        doğrultusunda onaylanmalıdır.
+      </p>
+      <span>SİMÜLE EŞİKLER · GÜVENLİK SİSTEMİ DEĞİLDİR</span>
+    </footer>
+  </main>
+</div>
