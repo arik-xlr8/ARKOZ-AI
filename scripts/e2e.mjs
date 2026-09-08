@@ -59,6 +59,10 @@ try {
   await brandLogo.waitFor();
   assert.equal(await brandLogo.getAttribute("src"), "/branding/arkoz_logo.PNG");
   assert.ok(await brandLogo.evaluate((image) => image.complete && image.naturalWidth > 0));
+  assert.equal(
+    await page.locator('link[rel="icon"]').getAttribute("href"),
+    "/branding/arkoz-favicon.png?v=2",
+  );
   await page
     .getByRole("heading", { name: "Fabrika genel durumu", exact: true })
     .waitFor();
