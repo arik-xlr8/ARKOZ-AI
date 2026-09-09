@@ -18,6 +18,9 @@ fi
 runuser -u "${APP_USER}" -- git -C "${APP_DIR}" pull --ff-only
 runuser -u "${APP_USER}" -- env HOME="${APP_HOME}" npm ci --prefix "${APP_DIR}"
 runuser -u "${APP_USER}" -- env HOME="${APP_HOME}" npm run build --prefix "${APP_DIR}"
+runuser -u "${APP_USER}" -- "${APP_DIR}/.venv/bin/python" -m pip install \
+  --index-url https://download.pytorch.org/whl/cpu \
+  torch==2.14.0
 runuser -u "${APP_USER}" -- "${APP_DIR}/.venv/bin/python" -m pip install -r "${APP_DIR}/forecast-service/requirements-timesfm.txt"
 
 install -m 0644 "${APP_DIR}/deploy/arkoz-api.service" /etc/systemd/system/arkoz-api.service

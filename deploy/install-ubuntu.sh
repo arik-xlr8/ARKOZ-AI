@@ -41,6 +41,9 @@ if [[ ! -x "${APP_DIR}/.venv/bin/python" ]]; then
   runuser -u "${APP_USER}" -- python3 -m venv "${APP_DIR}/.venv"
 fi
 runuser -u "${APP_USER}" -- "${APP_DIR}/.venv/bin/python" -m pip install --upgrade pip
+runuser -u "${APP_USER}" -- "${APP_DIR}/.venv/bin/python" -m pip install \
+  --index-url https://download.pytorch.org/whl/cpu \
+  torch==2.14.0
 runuser -u "${APP_USER}" -- "${APP_DIR}/.venv/bin/python" -m pip install -r "${APP_DIR}/forecast-service/requirements-timesfm.txt"
 
 if [[ ! -f "${APP_DIR}/.env" ]]; then

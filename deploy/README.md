@@ -7,6 +7,8 @@ Bu yapı Docker kullanmadan şu servisleri çalıştırır:
 - Python: TimesFM servisini yalnızca yerel `8000` portunda çalıştırır.
 - systemd: API ile TimesFM'i açılışta başlatır ve hata durumunda yeniden çalıştırır.
 
+Kurulum betiği GPU bulunmayan VPS için PyTorch'un CPU paketini kullanır; gereksiz CUDA paketleri kurulmaz.
+
 ## İlk kurulum
 
 Ubuntu 24.04 VPS'e `root` ile bağlandıktan sonra:
