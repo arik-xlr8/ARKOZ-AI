@@ -105,7 +105,7 @@ class App implements OnDestroy {
     { name: "Tahminler", icon: "fa-solid fa-chart-line" },
     { name: "Günlük Analizler", icon: "fa-solid fa-file-waveform" },
     { name: "Bakım", icon: "fa-solid fa-screwdriver-wrench" },
-    { name: "Yapay Zekâ Asistanı", icon: "fa-solid fa-diamond ai-sparkle" },
+    { name: "Yapay Zekâ Asistanı", icon: "fa-solid fa-hexagon-nodes-bolt" },
     { name: "Ayarlar", icon: "fa-solid fa-gear" },
   ];
   page = signal("Genel Bakış");

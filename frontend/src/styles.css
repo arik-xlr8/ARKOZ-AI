@@ -2863,12 +2863,6 @@ main {
   font-weight: 900;
 }
 
-.ai-sparkle {
-  display: inline-block;
-  transform: scaleX(0.72);
-  filter: drop-shadow(0 0 3px rgba(115, 95, 195, 0.18));
-}
-
 .table-scroll .fa-arrow-right {
   margin: 0 4px;
   font-size: 9px;
