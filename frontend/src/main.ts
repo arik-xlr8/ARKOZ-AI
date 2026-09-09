@@ -113,6 +113,8 @@ class App implements OnDestroy {
   loginBusy = signal(false);
   loginError = signal("");
   loginPassword = "";
+  appLoading = signal(true);
+  loadingProgress = signal(0);
   dash = signal<Dashboard | null>(null);
   selected = signal<Asset | null>(null);
   sensors = signal<Sensor[]>([]);
@@ -149,6 +151,7 @@ class App implements OnDestroy {
   chatInput = "";
   alertFilter = "ACTIVE";
   private timer?: ReturnType<typeof setInterval>;
+  private loadingTimer?: ReturnType<typeof setInterval>;
   private appStarted = false;
   private authToken = sessionStorage.getItem("arkoz-session") ?? "";
   private refreshing = false;
@@ -220,12 +223,33 @@ class App implements OnDestroy {
   private startApplication() {
     if (this.appStarted) return;
     this.appStarted = true;
+    this.beginLoading();
     window.addEventListener("hashchange", this.routeHandler);
-    void this.initialize();
-    this.timer = setInterval(() => void this.refresh(), 3000);
+    void this.initialize().finally(() => {
+      if (this.authenticated() && this.appStarted)
+        this.timer = setInterval(() => void this.refresh(), 3000);
+    });
+  }
+  private beginLoading() {
+    if (this.loadingTimer) clearInterval(this.loadingTimer);
+    this.appLoading.set(true);
+    this.loadingProgress.set(6);
+    this.loadingTimer = setInterval(
+      () =>
+        this.loadingProgress.update((progress) => Math.min(92, progress + 2)),
+      70,
+    );
+  }
+  private async finishLoading() {
+    if (this.loadingTimer) clearInterval(this.loadingTimer);
+    this.loadingTimer = undefined;
+    this.loadingProgress.set(100);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    if (this.authenticated()) this.appLoading.set(false);
   }
   ngOnDestroy() {
     if (this.timer) clearInterval(this.timer);
+    if (this.loadingTimer) clearInterval(this.loadingTimer);
     window.removeEventListener("hashchange", this.routeHandler);
   }
   async login() {
@@ -263,7 +287,10 @@ class App implements OnDestroy {
     this.loginPassword = "";
     this.loginError.set("Oturum sona erdi. Lütfen tekrar giriş yapın.");
     if (this.timer) clearInterval(this.timer);
+    if (this.loadingTimer) clearInterval(this.loadingTimer);
     this.timer = undefined;
+    this.loadingTimer = undefined;
+    this.loadingProgress.set(0);
     this.appStarted = false;
     window.removeEventListener("hashchange", this.routeHandler);
   }
@@ -302,20 +329,33 @@ class App implements OnDestroy {
     }
   }
   async initialize() {
-    await this.refresh();
-    const simulation = this.dash()?.simulation;
-    if (simulation) {
-      this.simulationMode = "autonomous";
-      this.simulationSeed = simulation.seed ?? this.simulationSeed;
-    }
-    await this.restoreRoute();
     try {
-      const s = await this.api<{ scenarios: { id: string; name: string }[] }>(
-        "/simulation/scenarios",
-      );
+      await this.refresh();
+      if (!this.authenticated()) return;
+      this.loadingProgress.update((progress) => Math.max(progress, 55));
+      const [s, settings, reportData] = await Promise.all([
+        this.api<{ scenarios: { id: string; name: string }[] }>(
+          "/simulation/scenarios",
+        ),
+        this.api<NonNullable<ReturnType<typeof this.settings>>>("/settings"),
+        this.api<ReportsResponse>("/reports"),
+      ]);
       this.scenarios.set(s.scenarios);
+      this.settings.set(settings);
+      this.dailyReports.set(reportData.daily);
+      this.eventReports.set(reportData.events);
+      this.loadingProgress.update((progress) => Math.max(progress, 88));
+      const simulation = this.dash()?.simulation;
+      if (simulation) {
+        this.simulationMode = "autonomous";
+        this.simulationSeed = simulation.seed ?? this.simulationSeed;
+      }
+      await this.restoreRoute();
+      this.loadingProgress.update((progress) => Math.max(progress, 96));
     } catch (e) {
       this.fail(e);
+    } finally {
+      if (this.authenticated()) await this.finishLoading();
     }
   }
   fail(e: unknown) {

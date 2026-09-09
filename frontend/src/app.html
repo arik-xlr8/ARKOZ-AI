@@ -42,6 +42,33 @@
     </button>
   </form>
 </section>
+} @else if(appLoading()){
+<section class="app-loader" aria-live="polite" aria-busy="true">
+  <div class="loader-card">
+    <img
+      src="/branding/arkoz_logo.PNG"
+      alt="ARKOZ AI"
+      width="58"
+      height="58"
+    />
+    <strong>Fabrika verileri hazırlanıyor</strong>
+    <p>Analizler, ekipmanlar ve bakım kayıtları yükleniyor.</p>
+    <div class="loader-progress-heading">
+      <span>Sistem yükleniyor</span>
+      <b>{{loadingProgress()}}%</b>
+    </div>
+    <div
+      class="loader-progress"
+      role="progressbar"
+      aria-label="Sistem yükleme ilerlemesi"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      [attr.aria-valuenow]="loadingProgress()"
+    >
+      <span [style.width.%]="loadingProgress()"></span>
+    </div>
+  </div>
+</section>
 } @else {
 <aside class="sidebar">
   <a class="brand" href="#dashboard" (click)="navigate('Genel Bakış')"

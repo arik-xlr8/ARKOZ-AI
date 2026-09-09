@@ -84,24 +84,6 @@ input::placeholder {
   padding: 64px 24px 36px;
   background: #a60020;
 }
-.login-page::before {
-  content: "";
-  position: absolute;
-  z-index: -2;
-  inset: 0;
-  background:
-    linear-gradient(135deg, rgba(126, 0, 24, 0.7), rgba(224, 0, 42, 0.46)),
-    url("/branding/login-background.png") center / cover no-repeat;
-}
-.login-page::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  background:
-    radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.18), transparent 30%),
-    radial-gradient(circle at 82% 86%, rgba(83, 0, 16, 0.28), transparent 34%);
-}
 .login-card {
   position: relative;
   width: min(430px, 100%);
@@ -211,6 +193,66 @@ input::placeholder {
 .login-submit:hover:not(:disabled) {
   background: var(--brand-dark);
   transform: translateY(-1px);
+}
+.app-loader {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #fbfbfc;
+}
+.loader-card {
+  width: min(520px, 100%);
+  text-align: center;
+}
+.loader-card > img {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  border-radius: 11px;
+  box-shadow: 0 9px 24px rgba(224, 0, 42, 0.12);
+}
+.loader-card > strong {
+  display: block;
+  margin-top: 18px;
+  color: #2b2c30;
+  font: 750 22px Manrope, "DM Sans", sans-serif;
+}
+.loader-card > p {
+  margin: 7px 0 34px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.loader-progress-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: #5f6268;
+  font-size: 13px;
+  font-weight: 650;
+}
+.loader-progress-heading b {
+  color: var(--brand);
+  font: 750 17px Manrope, "DM Sans", sans-serif;
+}
+.loader-progress {
+  height: 12px;
+  overflow: hidden;
+  border: 1px solid #ead8dc;
+  border-radius: 999px;
+  background: #f1e9eb;
+  box-shadow: inset 0 1px 2px rgba(62, 0, 12, 0.08);
+}
+.loader-progress > span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand-dark), var(--brand));
+  box-shadow: 0 0 14px rgba(224, 0, 42, 0.35);
+  transition: width 120ms ease-out;
 }
 h1,
 h2,

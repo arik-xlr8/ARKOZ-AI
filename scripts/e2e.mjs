@@ -73,10 +73,18 @@ try {
   await page.getByRole("alert").filter({ hasText: "Şifre hatalı" }).waitFor();
   await page.getByLabel("Şifre").fill(process.env.APP_PASSWORD ?? "admin123");
   await page.getByRole("button", { name: "Giriş yap", exact: true }).click();
+  const loader = page.locator(".app-loader");
+  await loader.waitFor();
+  const progress = page.getByRole("progressbar", {
+    name: "Sistem yükleme ilerlemesi",
+  });
+  await progress.waitFor();
+  assert.ok(Number(await progress.getAttribute("aria-valuenow")) >= 0);
   assert.match(
     (await page.locator(".brand").innerText()).replace(/\s+/g, " "),
     /ARKOZ AI/,
   );
+  await loader.waitFor({ state: "hidden" });
   const brandLogo = page.locator(".brand-logo");
   await brandLogo.waitFor();
   assert.equal(await brandLogo.getAttribute("src"), "/branding/arkoz_logo.PNG");
