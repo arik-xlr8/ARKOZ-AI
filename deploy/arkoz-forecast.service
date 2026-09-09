@@ -10,7 +10,8 @@ Group=arkoz
 WorkingDirectory=/opt/arkoz-ai
 EnvironmentFile=-/opt/arkoz-ai/.env
 Environment=FORECAST_PROVIDER=timesfm
-Environment=HF_HOME=/var/lib/arkoz-ai/huggingface
+Environment=HOME=/var/lib/arkoz
+Environment=HF_HOME=/var/lib/arkoz/huggingface
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/opt/arkoz-ai/.venv/bin/python -m uvicorn app:app --app-dir /opt/arkoz-ai/forecast-service --host 127.0.0.1 --port 8000
 Restart=on-failure

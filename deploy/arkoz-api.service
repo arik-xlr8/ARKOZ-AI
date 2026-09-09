@@ -11,6 +11,7 @@ WorkingDirectory=/opt/arkoz-ai
 EnvironmentFile=-/opt/arkoz-ai/.env
 Environment=NODE_ENV=production
 Environment=PORT=3000
+Environment=BIND_HOST=127.0.0.1
 Environment=FORECAST_SERVICE_URL=http://127.0.0.1:8000
 ExecStart=/usr/bin/node /opt/arkoz-ai/backend/dist/index.js
 Restart=on-failure

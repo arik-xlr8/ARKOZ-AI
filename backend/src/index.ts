@@ -330,6 +330,9 @@ setInterval(() => {
     );
   if (!withinLimit) data.running = false;
 }, 3000).unref();
-app.listen(Number(process.env.PORT ?? 3000), "0.0.0.0", () =>
-  console.log("ARKOZ AI API http://localhost:3000"),
+const port = Number(process.env.PORT ?? 3000);
+const bindHost = process.env.BIND_HOST ?? "0.0.0.0";
+
+app.listen(port, bindHost, () =>
+  console.log(`ARKOZ AI API http://${bindHost}:${port}`),
 );
