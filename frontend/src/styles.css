@@ -90,8 +90,8 @@ input::placeholder {
   z-index: -2;
   inset: 0;
   background:
-    linear-gradient(135deg, rgba(126, 0, 24, 0.88), rgba(224, 0, 42, 0.68)),
-    url("/branding/login-background.jpg") center / cover no-repeat;
+    linear-gradient(135deg, rgba(126, 0, 24, 0.7), rgba(224, 0, 42, 0.46)),
+    url("/branding/login-background.png") center / cover no-repeat;
 }
 .login-page::after {
   content: "";
