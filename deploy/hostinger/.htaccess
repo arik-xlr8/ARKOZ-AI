@@ -1,0 +1,22 @@
+DirectoryIndex index.html
+Options -Indexes
+
+RewriteEngine On
+
+# API requests are handled by the PHP proxy in public_html/api.
+RewriteRule ^api(?:/|$) - [L]
+
+# Serve real Angular assets directly and send client-side routes to index.html.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+RewriteRule ^ index.html [L]
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(?:css|js|woff2?|png|jpe?g|gif|svg|ico)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+  <FilesMatch "^(?:index\.html)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
