@@ -116,6 +116,7 @@ class App implements OnDestroy {
   loginPassword = "";
   appLoading = signal(true);
   loadingProgress = signal(0);
+  simulationEngaged = signal(false);
   dash = signal<Dashboard | null>(null);
   selected = signal<Asset | null>(null);
   sensors = signal<Sensor[]>([]);
@@ -174,6 +175,32 @@ class App implements OnDestroy {
   activeAlerts = computed(
     () => this.alerts().filter((a) => a.status !== "RESOLVED").length,
   );
+  factoryRunState = computed(() => {
+    const simulation = this.dash()?.simulation;
+    if (!simulation)
+      return {
+        label: "Bağlanıyor",
+        tone: "ready",
+      };
+    if (simulation.mode === "scenario")
+      return {
+        label: simulation.running ? "Test çalışıyor" : "Test duraklatıldı",
+        tone: simulation.running ? "running" : "paused",
+      };
+    if (simulation.running)
+      return {
+        label: "Üretim aktif",
+        tone: "running",
+      };
+    return {
+      label:
+        simulation.step > 0 || this.simulationEngaged()
+          ? "Üretim duraklatıldı"
+          : "Başlatılmaya hazır",
+      tone:
+        simulation.step > 0 || this.simulationEngaged() ? "paused" : "ready",
+    };
+  });
   factoryCalendar = computed(() => {
     const simulation = this.dash()?.simulation;
     const timestamp = simulation?.now ?? this.dash()?.lastUpdate;
@@ -213,6 +240,35 @@ class App implements OnDestroy {
       year: current.getUTCFullYear(),
       currentIso: new Date(currentMidnight).toISOString().slice(0, 10),
       shift: -(currentIndex - 2) * 50,
+    };
+  });
+  factoryTimeline = computed(() => {
+    const simulation = this.dash()?.simulation;
+    const timestamp = simulation?.now ?? this.dash()?.lastUpdate;
+    if (!simulation || !timestamp) return null;
+    const current = new Date(timestamp);
+    const formatter = new Intl.DateTimeFormat("tr-TR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+      timeZone: "Europe/Istanbul",
+    });
+    const timeAt = (offsetMinutes: number) =>
+      formatter.format(new Date(current.getTime() + offsetMinutes * 60_000));
+    const stepInDay = simulation.step % 96;
+    const progress = (stepInDay / 96) * 100;
+    return {
+      current: timeAt(0),
+      times: Array.from({ length: 11 }, (_, index) => {
+        const offset = index - 5;
+        return {
+          offset,
+          label: timeAt(offset * 15),
+        };
+      }),
+      day: simulation.day || 1,
+      step: simulation.step || 0,
+      progress: Number(progress.toFixed(2)),
     };
   });
   constructor() {
@@ -527,6 +583,7 @@ class App implements OnDestroy {
           : { mode: "scenario", scenarioId: this.scenarioId };
       if (this.simulationMode === "autonomous") this.simulationSeed = seed;
       await this.api("/simulation/activate", body);
+      this.simulationEngaged.set(true);
       this.assessment.set(null);
       await this.refresh();
       this.notice.set(
@@ -556,6 +613,7 @@ class App implements OnDestroy {
           : { mode: "scenario", scenarioId: this.scenarioId };
       if (this.simulationMode === "autonomous") this.simulationSeed = seed;
       await this.api("/simulation/reset", body);
+      this.simulationEngaged.set(false);
       this.assessment.set(null);
       await this.refresh();
       this.notice.set(
@@ -572,6 +630,7 @@ class App implements OnDestroy {
       await this.api("/simulation/pause", {
         paused: !!this.dash()?.simulation.running,
       });
+      this.simulationEngaged.set(true);
       await this.refresh();
     } catch (e) {
       this.fail(e);

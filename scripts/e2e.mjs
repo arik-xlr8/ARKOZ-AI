@@ -133,6 +133,16 @@ try {
   }));
   assert.ok(calendarStyle.pastOpacity < calendarStyle.futureOpacity);
   assert.equal(calendarStyle.transition, "0.62s");
+  const factoryState = page.locator(".factory-run-state");
+  assert.equal(await factoryState.getAttribute("data-state"), "ready");
+  assert.equal(await factoryState.locator(".factory-gear").count(), 2);
+  const timelineTimes = page.locator(".linear-time");
+  assert.equal(await timelineTimes.count(), 11);
+  assert.equal(await page.locator(".linear-time.past").count(), 5);
+  assert.equal(await page.locator(".linear-time.future").count(), 5);
+  assert.equal(await timelineTimes.nth(5).getAttribute("aria-current"), "time");
+  assert.equal(await page.locator(".timeline-day b").innerText(), "1");
+  assert.equal(await page.locator(".timeline-step b").innerText(), "0");
   await page
     .getByRole("button", { name: "Fırın Ana Motoru Pişirme Hattı" })
     .waitFor();

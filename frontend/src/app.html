@@ -175,6 +175,20 @@
         <p>{{pageDescription()}}</p>
       </div>
       <div class="heading-actions">
+        @if(factoryRunState(); as state){
+        <div
+          class="factory-run-state"
+          [attr.data-state]="state.tone"
+          role="status"
+          [attr.aria-label]="state.label"
+        >
+          <span class="factory-state-gears" aria-hidden="true">
+            <i class="fa-solid fa-gear factory-gear factory-gear-left"></i>
+            <i class="fa-solid fa-gear factory-gear factory-gear-right"></i>
+          </span>
+          <strong>{{state.label}}</strong>
+        </div>
+        }
         @if(factoryCalendar(); as calendar){
         <section
           class="factory-calendar"
@@ -428,16 +442,41 @@
             <h2>Ekipman risk özeti</h2>
             <p>Mevcut ve öngörülen riske göre sıralanır</p>
           </div>
-          <div class="asset-heading-meta">
-            @if(activeMode()==='autonomous'){
-            <span class="step-count"
-              >Gün {{d.simulation.day||1}} · {{d.simulation.step||0}} adım</span
+          @if(factoryTimeline(); as clock){
+          <div class="factory-time-cluster">
+            <strong class="timeline-day">GÜN <b>{{clock.day}}</b></strong>
+            <div
+              class="linear-timeline"
+              [attr.aria-label]="'Gün ' + clock.day + ', adım ' + clock.step + ', ' + clock.current + ' fabrika saati, gün yüzde ' + clock.progress + ' tamamlandı'"
             >
-            } @else {
-            <span class="step-count">Adım {{d.simulation.step||0}} / 32</span>
-            }
+              <div
+                class="linear-day-progress"
+                role="progressbar"
+                aria-label="Simülasyon günü ilerlemesi"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                [attr.aria-valuenow]="clock.progress"
+              >
+                <span [style.width.%]="clock.progress"></span>
+              </div>
+              <div class="linear-time-window">
+                @for(time of clock.times; track time.offset){
+                <time
+                  class="linear-time"
+                  [class.past]="time.offset < 0"
+                  [class.current]="time.offset === 0"
+                  [class.future]="time.offset > 0"
+                  [attr.aria-current]="time.offset === 0 ? 'time' : null"
+                >{{time.label}}</time>
+                }
+              </div>
+            </div>
+            <strong class="timeline-step"><b>{{clock.step}}</b> ADIM</strong>
+          </div>
+          <div class="asset-heading-meta">
             <span class="asset-total">{{d.online}} EKİPMAN</span>
           </div>
+          }
         </div>
         <div class="table-scroll">
           <table>
