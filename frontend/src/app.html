@@ -192,9 +192,9 @@
         <p class="simulation-explanation">
           <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
           <span
-            >Tüm fabrika sürekli üretir. Yük ve yıpranma birikir; arızalar
-            doğal olasılıklarla kendiliğinden gelişir. Aynı tohum aynı olay
-            akışını tekrar oluşturur.</span
+            >Tüm fabrika sürekli üretir. Yük ve yıpranma birikir; arızalar doğal
+            olasılıklarla kendiliğinden gelişir. Aynı tohum aynı olay akışını
+            tekrar oluşturur.</span
           >
         </p>
         } @else {
@@ -286,7 +286,11 @@
       <div class="kpi">
         <span
           >Yüksek riskli ekipmanlar
-          <b><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></b
+          <b
+            ><i
+              class="fa-solid fa-triangle-exclamation"
+              aria-hidden="true"
+            ></i></b
         ></span>
         <div class="kpi-number amber">
           {{d.highRisk.toString().padStart(2,'0')}}
@@ -337,9 +341,7 @@
               >Gün {{d.simulation.day||1}} · {{d.simulation.step||0}} adım</span
             >
             } @else {
-            <span class="step-count"
-              >Adım {{d.simulation.step||0}} / 32</span
-            >
+            <span class="step-count">Adım {{d.simulation.step||0}} / 32</span>
             }
             <span class="asset-total">{{d.online}} EKİPMAN</span>
           </div>
@@ -419,8 +421,8 @@
           <div class="section-heading">
             <h2>
               <span class="purple"
-                ><i class="fa-solid fa-hexagon-nodes-bolt"></i></span
-              >
+                ><i class="fa-solid fa-hexagon-nodes"></i
+              ></span>
               Analiz özeti
             </h2>
             <span class="pill purple-pill">CANLI</span>
@@ -443,14 +445,14 @@
               >{{tr(m.riskLevel)}}</span
             ><strong>{{m.name}}</strong><small>{{m.mainIssue}}</small
             ><span
-              >Ekipmanı incele <i class="fa-solid fa-arrow-right"></i></span
-            ></button
+              >Ekipmanı incele <i class="fa-solid fa-arrow-right"></i
+            ></span></button
           >}<button
             class="copilot-button"
             (click)="navigate('Yapay Zekâ Asistanı')"
           >
-            <i class="fa-solid fa-hexagon-nodes-bolt"></i> Fabrika
-            Asistanına sor <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <i class="fa-solid fa-hexagon-nodes"></i> Fabrika Asistanına sor
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
           </button>
         </section>
         <section class="panel workflow">
@@ -569,8 +571,8 @@
         <div class="section-heading">
           <h2>
             <span class="purple"
-              ><i class="fa-solid fa-hexagon-nodes-bolt"></i></span
-            >
+              ><i class="fa-solid fa-hexagon-nodes"></i
+            ></span>
             Yapay zekâ değerlendirmesi
           </h2>
           <button class="text-button" [disabled]="busy()" (click)="analyze()">
@@ -582,7 +584,8 @@
           {{tr(a.urgency)}}</span
         ><small class="assessment-asof"
           >Veri zamanı: {{a.asOf|date:'HH:mm'}}{{a.asOf!==m.lastUpdate?' · Yeni
-          ölçümler var; yeniden değerlendirmek için Güncelle’ye basın.':''}}</small
+          ölçümler var; yeniden değerlendirmek için Güncelle’ye
+          basın.':''}}</small
         >
         <p class="assessment-summary">{{a.summary}}</p>
         <h3>Olası nedenler</h3>
@@ -676,8 +679,7 @@
             <td>
               {{a.current|number:'1.0-2'}}
               <i class="fa-solid fa-arrow-right"></i>
-              {{a.predicted|number:'1.0-2'}}
-              {{a.unit}}
+              {{a.predicted|number:'1.0-2'}} {{a.unit}}
             </td>
             <td>{{a.reason}}</td>
             <td><span class="pill neutral">{{tr(a.status)}}</span></td>
@@ -781,8 +783,8 @@
         @if(reportsLoading()&&!dailyReports().length){
         <div class="panel reports-empty">
           <span class="report-empty-icon"
-            ><i class="fa-solid fa-spinner fa-spin"></i></span
-          >
+            ><i class="fa-solid fa-spinner fa-spin"></i
+          ></span>
           <h2>Analizler yükleniyor</h2>
           <p>Kaydedilmiş günlük fabrika raporları getiriliyor.</p>
         </div>
@@ -846,8 +848,8 @@
                 (click)="openById(asset.machineId)"
               >
                 <span class="machine-icon"
-                  ><i class="fa-solid fa-industry"></i></span
-                >
+                  ><i class="fa-solid fa-industry"></i
+                ></span>
                 <span class="report-asset-copy">
                   <strong>{{asset.machine}}</strong>
                   <small>{{asset.summary}}</small>
@@ -874,8 +876,8 @@
         } @empty { @if(!reportsLoading()){
         <div class="panel reports-empty">
           <span class="report-empty-icon"
-            ><i class="fa-solid fa-file-waveform"></i></span
-          >
+            ><i class="fa-solid fa-file-waveform"></i
+          ></span>
           <h2>Henüz günlük analiz oluşmadı</h2>
           <p>
             Otonom fabrikayı çalıştırın. Her simülasyon gününün sonunda o günün
@@ -948,8 +950,7 @@
         <p>{{m.mainIssue}}</p>
         <div>
           <button class="secondary" (click)="openMachine(m)">
-            <i class="fa-solid fa-magnifying-glass-chart"></i> Verileri
-            incele</button
+            <i class="fa-solid fa-magnifying-glass-chart"></i> Verileri incele</button
           ><button class="primary" [disabled]="busy()" (click)="createTask(m)">
             <i class="fa-solid fa-plus"></i>
             {{busy()?'Oluşturuluyor…':'Bakım görevi oluştur'}}
@@ -1047,8 +1048,8 @@
         <div class="section-heading">
           <h2>
             <span class="purple"
-              ><i class="fa-solid fa-hexagon-nodes-bolt"></i></span
-            >
+              ><i class="fa-solid fa-hexagon-nodes"></i
+            ></span>
             Fabrika analiz asistanı
           </h2>
           <span class="pill neutral">ONAYLI FABRİKA VERİLERİ</span>
@@ -1056,7 +1057,7 @@
         <div class="messages" aria-live="polite">
           @if(!messages().length){
           <div class="chat-welcome">
-            <span><i class="fa-solid fa-hexagon-nodes-bolt"></i></span>
+            <span><i class="fa-solid fa-hexagon-nodes"></i></span>
             <h2>Neyi incelemek istersiniz?</h2>
             <p>
               Riskleri, sensör değişimlerini ve bakım önceliklerini
@@ -1115,11 +1116,14 @@
           (click)="ask(q)"
         >
           {{q}}
-          <span><i class="fa-solid fa-arrow-up-right-from-square"></i></span
-        ></button
+          <span
+            ><i class="fa-solid fa-arrow-up-right-from-square"></i
+          ></span></button
         >}
         <h3>Kullanılabilen veriler</h3>
-        <p><i class="fa-solid fa-check"></i> Ekipman bilgileri ve risk sinyalleri</p>
+        <p>
+          <i class="fa-solid fa-check"></i> Ekipman bilgileri ve risk sinyalleri
+        </p>
         <p><i class="fa-solid fa-check"></i> Sensör geçmişi ve tahminler</p>
         <p><i class="fa-solid fa-check"></i> Bakım ve servis kayıtları</p>
         <small
@@ -1133,22 +1137,21 @@
       <h2>Demo ayarları</h2>
       <dl>
         <dt>Veri kaynağı</dt>
-        <dd>
-          {{s.dataSource}} · 15 dakikalık örnekler
-        </dd>
+        <dd>{{s.dataSource}} · 15 dakikalık örnekler</dd>
         <dt>Veri saklama</dt>
         <dd>{{s.storage}}</dd>
         <dt>Yapay zekâ yorumu</dt>
         <dd>
-          {{s.geminiConfigured?'Gemini yapılandırıldı; şema doğrulaması ve kural tabanlı hata
-          yedeği etkin':'Kural tabanlı yedek · Gemini için sunucuda
+          {{s.geminiConfigured?'Gemini yapılandırıldı; şema doğrulaması ve kural
+          tabanlı hata yedeği etkin':'Kural tabanlı yedek · Gemini için sunucuda
           GEMINI_API_KEY ayarlayın'}}
         </dd>
         <dt>Tahminleme</dt>
         <dd>
-          Yapılandırılan sağlayıcı: {{tr(s.forecastProvider)}} · Hızlı risk taraması yerel eğilim
-          modeliyle, grafik ve günlük tahminler Python servisiyle çalışır · Kullanılan gerçek
-          model her grafikte ve günlük raporda gösterilir
+          Yapılandırılan sağlayıcı: {{tr(s.forecastProvider)}} · Hızlı risk
+          taraması yerel eğilim modeliyle, grafik ve günlük tahminler Python
+          servisiyle çalışır · Kullanılan gerçek model her grafikte ve günlük
+          raporda gösterilir
         </dd>
         <dt>Entegrasyonlar</dt>
         <dd>

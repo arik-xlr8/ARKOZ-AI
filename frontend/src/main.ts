@@ -105,7 +105,7 @@ class App implements OnDestroy {
     { name: "Tahminler", icon: "fa-solid fa-chart-line" },
     { name: "Günlük Analizler", icon: "fa-solid fa-file-waveform" },
     { name: "Bakım", icon: "fa-solid fa-screwdriver-wrench" },
-    { name: "Yapay Zekâ Asistanı", icon: "fa-solid fa-hexagon-nodes-bolt" },
+    { name: "Yapay Zekâ Asistanı", icon: "fa-solid fa-hexagon-nodes" },
     { name: "Ayarlar", icon: "fa-solid fa-gear" },
   ];
   page = signal("Genel Bakış");
@@ -277,7 +277,9 @@ class App implements OnDestroy {
   async refresh(showFeedback = false) {
     if (this.refreshing) {
       if (showFeedback)
-        this.notice.set("Veriler zaten yenileniyor. Güncel sonuçlar birazdan gösterilecek.");
+        this.notice.set(
+          "Veriler zaten yenileniyor. Güncel sonuçlar birazdan gösterilecek.",
+        );
       return;
     }
     this.refreshing = true;

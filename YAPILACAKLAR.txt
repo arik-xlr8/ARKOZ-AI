@@ -1,0 +1,4 @@
+1- Butonlarda feedback yok özellikle bakım oluştur butonunda
+2- Hala çok fazla renk var birbirinden farklı
+3- Gereksiz basılmayan butonlar var en sol alt gibi şuanlık kaldırılabilir ya da düzenlenebilir
+4- Chartlar için library kullanılabilir
