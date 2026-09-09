@@ -317,10 +317,11 @@ try {
   assert.equal((await api("/alerts")).filter((alert) => alert.status !== "RESOLVED").length, 0);
   assert.equal((await api("/maintenance")).tasks.length, 0);
   assert.deepEqual(errors, []);
-  await page.locator(".profile-toggle").click();
+  const profileToggle = page.locator(".profile-toggle");
+  await profileToggle.click();
   const logoutButton = page.getByRole("menuitem", { name: "Çıkış Yap" });
   await logoutButton.waitFor();
-  assert.equal(await page.locator(".profile-toggle").getAttribute("aria-expanded"), "true");
+  assert.equal(await profileToggle.getAttribute("aria-expanded"), "true");
   assert.equal(await logoutButton.locator(".fa-right-from-bracket").count(), 1);
   await logoutButton.click();
   await page.locator(".login-card").waitFor();
