@@ -155,6 +155,7 @@ input::placeholder {
 }
 .login-password-field > i {
   padding-left: 16px;
+  padding-right: 11px;
   color: var(--brand);
   font-size: 14px;
 }
@@ -163,6 +164,7 @@ input::placeholder {
   height: 48px;
   border: 0;
   outline: 0;
+  padding-left: 0;
   background: transparent;
   box-shadow: none;
 }
@@ -434,14 +436,25 @@ nav button.active {
   color: #56646c;
   margin-top: 8px;
 }
+.profile-shell {
+  position: relative;
+  margin-top: 23px;
+}
 .profile {
+  width: 100%;
   display: flex;
   align-items: center;
+  border: 0;
   border-top: 1px solid var(--line);
-  padding-top: 20px;
-  margin-top: 23px;
+  border-radius: 0;
+  padding: 20px 0 0;
   gap: 9px;
+  background: transparent;
+  text-align: left;
   font-size: 13px;
+}
+.profile:hover {
+  color: var(--brand-dark);
 }
 .profile > span {
   border-radius: 50%;
@@ -461,6 +474,49 @@ nav button.active {
 .profile > b {
   margin-left: auto;
   color: var(--muted);
+}
+.profile-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  left: 0;
+  z-index: 2;
+  padding: 6px;
+  border: 1px solid #e2d8da;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(56, 28, 34, 0.16);
+  animation: profile-menu-in 150ms ease-out;
+}
+.profile-menu button {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--brand-dark);
+  font-weight: 700;
+}
+.profile-menu button:hover {
+  background: var(--brand-soft);
+}
+.profile-menu i {
+  width: 17px;
+  text-align: center;
+}
+@keyframes profile-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .shell {
   margin-left: 222px;
@@ -2949,6 +3005,7 @@ main {
 
 .seed-input > i {
   padding-left: 14px;
+  padding-right: 10px;
   color: var(--brand);
   font-size: 13px;
 }
@@ -2956,7 +3013,7 @@ main {
 .simulation-config .seed-input input {
   height: 45px;
   min-height: 45px;
-  padding-left: 10px;
+  padding-left: 0;
   border: 0;
   outline: 0;
   background: transparent;

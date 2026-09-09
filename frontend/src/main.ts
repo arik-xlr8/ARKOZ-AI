@@ -112,6 +112,7 @@ class App implements OnDestroy {
   authenticated = signal(false);
   loginBusy = signal(false);
   loginError = signal("");
+  profileMenuOpen = signal(false);
   loginPassword = "";
   appLoading = signal(true);
   loadingProgress = signal(0);
@@ -280,12 +281,13 @@ class App implements OnDestroy {
       this.loginBusy.set(false);
     }
   }
-  private endSession() {
+  private endSession(loginMessage = "Oturum sona erdi. Lütfen tekrar giriş yapın.") {
     this.authToken = "";
     sessionStorage.removeItem("arkoz-session");
+    this.profileMenuOpen.set(false);
     this.authenticated.set(false);
     this.loginPassword = "";
-    this.loginError.set("Oturum sona erdi. Lütfen tekrar giriş yapın.");
+    this.loginError.set(loginMessage);
     if (this.timer) clearInterval(this.timer);
     if (this.loadingTimer) clearInterval(this.loadingTimer);
     this.timer = undefined;
@@ -293,6 +295,9 @@ class App implements OnDestroy {
     this.loadingProgress.set(0);
     this.appStarted = false;
     window.removeEventListener("hashchange", this.routeHandler);
+  }
+  logout() {
+    this.endSession("");
   }
   async api<T>(path: string, body?: unknown, method = "POST"): Promise<T> {
     const r = await fetch(

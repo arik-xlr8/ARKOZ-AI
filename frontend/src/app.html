@@ -101,10 +101,31 @@
   <div class="sidebar-bottom">
     <div class="connection"><i></i> Simülasyon bağlı</div>
     <p>Analiz katmanı · Salt okunur</p>
-    <div class="profile">
-      <span>DM</span>
-      <div>Demo Operatörü<small>Bakım ekibi</small></div>
-      <b><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></b>
+    <div class="profile-shell">
+      @if(profileMenuOpen()){
+      <div class="profile-menu" role="menu">
+        <button type="button" role="menuitem" (click)="logout()">
+          <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+          <span>Çıkış Yap</span>
+        </button>
+      </div>
+      }
+      <button
+        class="profile profile-toggle"
+        type="button"
+        aria-label="Operatör menüsü"
+        [attr.aria-expanded]="profileMenuOpen()"
+        (click)="profileMenuOpen.set(!profileMenuOpen())"
+      >
+        <span>DM</span>
+        <div>Demo Operatörü<small>Bakım ekibi</small></div>
+        <b
+          ><i
+            [class]="profileMenuOpen()?'fa-solid fa-chevron-up':'fa-solid fa-chevron-down'"
+            aria-hidden="true"
+          ></i
+        ></b>
+      </button>
     </div>
   </div>
 </aside>
