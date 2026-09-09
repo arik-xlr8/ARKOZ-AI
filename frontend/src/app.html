@@ -18,7 +18,7 @@
       [class.active]="page()===item.name || (page()==='Ekipman detayı'&&item.name==='Ekipmanlar')"
       (click)="navigate(item.name)"
     >
-      <span class="nav-icon">{{item.icon}}</span
+      <i [class]="'nav-icon '+item.icon" aria-hidden="true"></i
       >{{item.name}}@if(item.name==='Alarmlar'&&activeAlerts()){<b
         class="nav-count"
         >{{activeAlerts()}}</b
@@ -32,24 +32,38 @@
     <div class="profile">
       <span>DM</span>
       <div>Demo Operatörü<small>Bakım ekibi</small></div>
-      <b>⌄</b>
+      <b><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></b>
     </div>
   </div>
 </aside>
 <div class="shell">
   <header class="topbar">
     <div class="plant-selector">
-      <span class="plant-icon">▥</span><strong>Demo Çimento Fabrikası</strong
-      ><span class="muted">⌄</span><span class="top-divider"></span
+      <i class="plant-icon fa-solid fa-industry" aria-hidden="true"></i
+      ><strong>Ağrı Çimento Fabrikası</strong
+      ><i class="muted fa-solid fa-chevron-down" aria-hidden="true"></i
+      ><span class="top-divider"></span
       ><span class="live"
         ><i></i>{{dash()?.highRisk ? 'İnceleme gerekiyor' : 'Fabrika
         çalışıyor'}}</span
       >
     </div>
     <div class="top-right">
-      <span class="muted">Fabrika zamanı</span
-      ><span>{{dash()?.lastUpdate|date:'d MMM, HH:mm'}}</span
-      ><span class="demo-badge">SİMÜLE VERİ</span>
+      <span class="demo-badge">SİMÜLE VERİ</span>
+      <button
+        class="top-refresh"
+        type="button"
+        [disabled]="manualRefreshing()"
+        title="Sunucudaki en güncel fabrika, alarm ve bakım verilerini getirir"
+        (click)="refresh(true)"
+      >
+        <i
+          class="fa-solid fa-arrows-rotate"
+          [class.fa-spin]="manualRefreshing()"
+          aria-hidden="true"
+        ></i>
+        {{manualRefreshing()?'Yenileniyor…':'Verileri yenile'}}
+      </button>
     </div>
   </header>
   <main>
@@ -97,14 +111,10 @@
           <span class="calendar-year">{{calendar.year}}</span>
         </section>
         }
-        <button
-          class="secondary refresh-button"
-          title="Sunucudaki en güncel fabrika, alarm ve bakım verilerini getirir"
-          (click)="refresh()"
-        >
-          ↻ <span class="refresh-long">Verileri yenile</span
-          ><span class="refresh-short">Yenile</span>
-        </button>
+        <div class="factory-clock" aria-label="Fabrika saati">
+          <span>FABRİKA SAATİ</span>
+          <strong>{{dash()?.lastUpdate|date:'HH:mm'}}</strong>
+        </div>
       </div>
     </div>
     @if(error()){
@@ -113,8 +123,21 @@
     </div>
     } @if(notice()){
     <div class="banner success" role="status">
-      {{notice()}}<button aria-label="Bildirimi kapat" (click)="notice.set('')">
-        ×
+      <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+      <span>{{notice()}}</span>
+      @if(notice().startsWith('Bakım görevi')){
+      <button class="banner-action" type="button" (click)="navigate('Bakım')">
+        Bakım sayfasına git
+        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+      </button>
+      }
+      <button
+        class="banner-dismiss"
+        type="button"
+        aria-label="Bildirimi kapat"
+        (click)="notice.set('')"
+      >
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
       </button>
     </div>
     }
@@ -124,7 +147,7 @@
     >
       <div class="simulation-heading-row">
         <div class="simulation-title">
-          <span>◈</span>
+          <span><i class="fa-solid fa-cubes" aria-hidden="true"></i></span>
           <div>
             <strong>Fabrika simülasyonu</strong>
             <small>{{simulationStatus()}}</small>
@@ -153,20 +176,26 @@
         @if(simulationMode==='autonomous'){
         <label class="seed-field" for="simulation-seed">
           <span>Simülasyon tohumu</span>
-          <input
-            id="simulation-seed"
-            name="simulationSeed"
-            type="number"
-            min="1"
-            max="2147483647"
-            step="1"
-            [(ngModel)]="simulationSeed"
-          />
+          <span class="seed-input">
+            <i class="fa-solid fa-hashtag" aria-hidden="true"></i>
+            <input
+              id="simulation-seed"
+              name="simulationSeed"
+              type="number"
+              min="1"
+              max="2147483647"
+              step="1"
+              [(ngModel)]="simulationSeed"
+            />
+          </span>
         </label>
         <p class="simulation-explanation">
-          Tüm fabrika sürekli üretir. Yük ve yıpranma birikir; arızalar doğal
-          olasılıklarla kendiliğinden gelişir. Aynı tohum aynı olay akışını
-          tekrar oluşturur.
+          <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+          <span
+            >Tüm fabrika sürekli üretir. Yük ve yıpranma birikir; arızalar
+            doğal olasılıklarla kendiliğinden gelişir. Aynı tohum aynı olay
+            akışını tekrar oluşturur.</span
+          >
         </p>
         } @else {
         <label class="scenario-field" for="scenario">
@@ -178,14 +207,18 @@
           </select>
         </label>
         <p class="simulation-explanation">
-          Sunum ve doğrulama için seçilen arıza davranışını hedef ekipmanda
-          tekrar edilebilir biçimde üretir.
+          <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+          <span
+            >Sunum ve doğrulama için seçilen arıza davranışını hedef ekipmanda
+            tekrar edilebilir biçimde üretir.</span
+          >
         </p>
         }
       </div>
       <div class="simulation-actions">
         <button class="primary" [disabled]="busy()" (click)="activate()">
-          ▶ {{simulationMode==='autonomous'?'Otonom fabrikayı başlat':'Testi
+          <i class="fa-solid fa-play" aria-hidden="true"></i>
+          {{simulationMode==='autonomous'?'Otonom fabrikayı başlat':'Testi
           başlat'}}
         </button>
         <button
@@ -193,14 +226,18 @@
           (click)="pause()"
           [disabled]="busy() || (dash()?.simulation?.step||0)>=(dash()?.simulation?.maxSteps||0)"
         >
-          {{dash()?.simulation?.running?'Ⅱ Duraklat':'▶ Devam et'}}
+          <i
+            [class]="dash()?.simulation?.running?'fa-solid fa-pause':'fa-solid fa-play'"
+            aria-hidden="true"
+          ></i>
+          {{dash()?.simulation?.running?'Duraklat':'Devam et'}}
         </button>
         <button
           class="secondary reset-button"
           [disabled]="busy()"
           (click)="resetSimulation()"
         >
-          ↺ Başa al
+          <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Başa al
         </button>
         <div class="step-actions">
           <button
@@ -220,16 +257,6 @@
           </button>
           }
         </div>
-        @if(activeMode()==='autonomous'){
-        <span class="step-count"
-          >Gün {{dash()?.simulation?.day||1}} · {{dash()?.simulation?.step||0}}
-          adım</span
-        >
-        } @else {
-        <span class="step-count"
-          >Adım {{dash()?.simulation?.step||0}} / 32</span
-        >
-        }
       </div>
     </section>
     @if(!dash()){
@@ -237,39 +264,60 @@
     } @if(page()==='Genel Bakış'&&dash();as d){
     <section class="kpi-grid">
       <div class="kpi">
-        <span>Fabrika sağlık puanı <b>◉</b></span>
+        <span
+          >Fabrika sağlık puanı
+          <b><i class="fa-solid fa-heart-pulse" aria-hidden="true"></i></b
+        ></span>
         <div class="kpi-number">{{d.plantHealth}}<small>/100</small></div>
         <div class="mini-track"><i [style.width.%]="d.plantHealth"></i></div>
         <small>Ekipman risk sinyallerinden hesaplanır</small>
       </div>
       <div class="kpi">
-        <span>Bağlı ekipmanlar <b>▤</b></span>
+        <span
+          >Bağlı ekipmanlar
+          <b><i class="fa-solid fa-server" aria-hidden="true"></i></b
+        ></span>
         <div class="kpi-number">{{d.online}}<small>/ 10</small></div>
-        <small class="green">● Tüm ekipmanlardan veri alınıyor</small>
+        <small class="green"
+          ><i class="fa-solid fa-circle" aria-hidden="true"></i> Tüm
+          ekipmanlardan veri alınıyor</small
+        >
       </div>
       <div class="kpi">
-        <span>Yüksek riskli ekipmanlar <b>△</b></span>
+        <span
+          >Yüksek riskli ekipmanlar
+          <b><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></b
+        ></span>
         <div class="kpi-number amber">
           {{d.highRisk.toString().padStart(2,'0')}}
         </div>
         <small>{{d.mediumRisk}} ekipman orta riskli</small>
       </div>
       <div class="kpi">
-        <span>Kritik alarmlar <b>!</b></span>
+        <span
+          >Kritik alarmlar
+          <b><i class="fa-solid fa-bell" aria-hidden="true"></i></b
+        ></span>
         <div class="kpi-number" [class.red]="d.criticalAlerts">
           {{d.criticalAlerts.toString().padStart(2,'0')}}
         </div>
         <small>Açık veya görüldü olarak işaretli</small>
       </div>
       <div class="kpi">
-        <span>Öngörülen riskler <b>⌁</b></span>
+        <span
+          >Öngörülen riskler
+          <b><i class="fa-solid fa-chart-line" aria-hidden="true"></i></b
+        ></span>
         <div class="kpi-number">
           {{d.predictedRisks.toString().padStart(2,'0')}}
         </div>
         <small>Uyarı eşiği aşımı · Gelecek 4 saat</small>
       </div>
       <div class="kpi">
-        <span>Öneriler <b>☷</b></span>
+        <span
+          >Öneriler
+          <b><i class="fa-solid fa-list-check" aria-hidden="true"></i></b
+        ></span>
         <div class="kpi-number">
           {{d.openRecommendations.toString().padStart(2,'0')}}
         </div>
@@ -283,7 +331,18 @@
             <h2>Ekipman risk özeti</h2>
             <p>Mevcut ve öngörülen riske göre sıralanır</p>
           </div>
-          <span class="pill neutral">10 EKİPMAN</span>
+          <div class="asset-heading-meta">
+            @if(activeMode()==='autonomous'){
+            <span class="step-count"
+              >Gün {{d.simulation.day||1}} · {{d.simulation.step||0}} adım</span
+            >
+            } @else {
+            <span class="step-count"
+              >Adım {{d.simulation.step||0}} / 32</span
+            >
+            }
+            <span class="asset-total">{{d.online}} EKİPMAN</span>
+          </div>
         </div>
         <div class="table-scroll">
           <table>
@@ -307,7 +366,10 @@
                     (click)="$event.stopPropagation();openMachine(m)"
                   >
                     <span class="machine-icon"
-                      >{{m.type==='Motor'?'⚙':m.type==='Fan'?'✣':'▥'}}</span
+                      ><i
+                        [class]="'fa-solid '+machineIcon(m.type)"
+                        aria-hidden="true"
+                      ></i></span
                     ><span>{{m.name}}<small>{{m.location}}</small></span>
                   </button>
                 </td>
@@ -348,14 +410,19 @@
             ><i class="tiny-dot"></i> Simülasyonda veriler 3 saniyede bir
             güncellenir</span
           ><button class="text-button" (click)="navigate('Ekipmanlar')">
-            Tüm ekipmanlar →
+            Tüm ekipmanlar <i class="fa-solid fa-arrow-right"></i>
           </button>
         </div>
       </section>
       <div class="right-stack">
         <section class="panel focus-panel">
           <div class="section-heading">
-            <h2><span class="purple">✧</span> Analiz özeti</h2>
+            <h2>
+              <span class="purple"
+                ><i class="fa-solid fa-wand-magic-sparkles"></i></span
+              >
+              Analiz özeti
+            </h2>
             <span class="pill purple-pill">CANLI</span>
           </div>
           <p class="brief-lead">
@@ -375,19 +442,31 @@
             <span class="pill" [attr.data-risk]="m.riskLevel"
               >{{tr(m.riskLevel)}}</span
             ><strong>{{m.name}}</strong><small>{{m.mainIssue}}</small
-            ><span>Ekipmanı incele →</span></button
+            ><span
+              >Ekipmanı incele <i class="fa-solid fa-arrow-right"></i></span
+            ></button
           >}<button
             class="copilot-button"
             (click)="navigate('Yapay Zekâ Asistanı')"
           >
-            ✧ Fabrika Asistanına sor ↗
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Fabrika
+            Asistanına sor <i class="fa-solid fa-arrow-up-right-from-square"></i>
           </button>
         </section>
         <section class="panel workflow">
           <h2>Sinyalden bakım işlemine</h2>
-          <p><span>01</span> Tespit et ve tahmin et <b>✓</b></p>
-          <p><span>02</span> Açıkla ve önceliklendir <b>✓</b></p>
-          <p><span>03</span> Doğrula ve görev oluştur <b>→</b></p>
+          <p>
+            <span>01</span> Tespit et ve tahmin et
+            <b><i class="fa-solid fa-check"></i></b>
+          </p>
+          <p>
+            <span>02</span> Açıkla ve önceliklendir
+            <b><i class="fa-solid fa-check"></i></b>
+          </p>
+          <p>
+            <span>03</span> Doğrula ve görev oluştur
+            <b><i class="fa-solid fa-arrow-right"></i></b>
+          </p>
           <small>Tüm işlemlerde kontrol insandadır.</small>
         </section>
       </div>
@@ -407,7 +486,11 @@
         (click)="openMachine(m)"
       >
         <div>
-          <span class="machine-icon">▥</span
+          <span class="machine-icon"
+            ><i
+              [class]="'fa-solid '+machineIcon(m.type)"
+              aria-hidden="true"
+            ></i></span
           ><span class="pill" [attr.data-risk]="m.riskLevel"
             >{{tr(m.riskLevel)}}</span
           >
@@ -434,7 +517,7 @@
       ><span class="muted"
         >Son bakım {{m.lastMaintenanceDate|date:'dd.MM.yyyy'}}</span
       ><button class="secondary" (click)="navigate('Ekipmanlar')">
-        ← Ekipman listesi
+        <i class="fa-solid fa-arrow-left"></i> Ekipman listesi
       </button>
     </div>
     <div class="sensor-grid">
@@ -484,9 +567,14 @@
       </div>
       <section class="panel assessment">
         <div class="section-heading">
-          <h2><span class="purple">✧</span> Yapay zekâ değerlendirmesi</h2>
+          <h2>
+            <span class="purple"
+              ><i class="fa-solid fa-wand-magic-sparkles"></i></span
+            >
+            Yapay zekâ değerlendirmesi
+          </h2>
           <button class="text-button" [disabled]="busy()" (click)="analyze()">
-            ↻ Güncelle
+            <i class="fa-solid fa-arrows-rotate"></i> Güncelle
           </button>
         </div>
         @if(assessment();as a){<span class="provider-label"
@@ -519,7 +607,8 @@
           [disabled]="busy()"
           (click)="createTask(m,a.recommendedActions[0].action)"
         >
-          ＋ Bakım görevi oluştur
+          <i class="fa-solid fa-plus"></i>
+          {{busy()?'Oluşturuluyor…':'Bakım görevi oluştur'}}
         </button>
         <p class="trust-note">
           Yapay zekâ önerisidir. İşlem öncesinde bakım personeli tarafından
@@ -538,7 +627,7 @@
           class="copilot-button"
           (click)="navigate('Yapay Zekâ Asistanı');ask(m.name+' neden yüksek riskli?')"
         >
-          Bu ekipmanı asistana sor →
+          Bu ekipmanı asistana sor <i class="fa-solid fa-arrow-right"></i>
         </button>
       </section>
     </div>
@@ -562,7 +651,9 @@
             <th>Önem seviyesi</th>
             <th>Ekipman / Sinyal</th>
             <th>Tespit zamanı</th>
-            <th>Mevcut → Tahmin tepe değeri</th>
+            <th>
+              Mevcut <i class="fa-solid fa-arrow-right"></i> Tahmin tepe değeri
+            </th>
             <th>Neden</th>
             <th>Durum</th>
             <th>İşlem</th>
@@ -583,7 +674,9 @@
             </td>
             <td>{{a.timestamp|date:'d MMM, HH:mm'}}</td>
             <td>
-              {{a.current|number:'1.0-2'}} → {{a.predicted|number:'1.0-2'}}
+              {{a.current|number:'1.0-2'}}
+              <i class="fa-solid fa-arrow-right"></i>
+              {{a.predicted|number:'1.0-2'}}
               {{a.unit}}
             </td>
             <td>{{a.reason}}</td>
@@ -654,7 +747,9 @@
         [threshold]="s.warning"
         [model]="forecasts()[s.metric]?.model||'Yükleniyor'"
       />
-      <div class="crossing"><span>⌁</span>{{crossing()}}</div>
+      <div class="crossing">
+        <span><i class="fa-solid fa-chart-line"></i></span>{{crossing()}}
+      </div>
       <p class="trust-note">
         Uyarı eşiği: {{s.warning|number:'1.0-2'}} {{s.unit}} · SİMÜLASYON
         AYARLARI. Eşik aşımları 15 dakikalık örneklerle hesaplanır.
@@ -676,12 +771,18 @@
             [disabled]="reportsLoading()"
             (click)="loadReports()"
           >
-            {{reportsLoading()?'Yükleniyor…':'↻ Raporları yenile'}}
+            <i
+              class="fa-solid fa-arrows-rotate"
+              [class.fa-spin]="reportsLoading()"
+            ></i>
+            {{reportsLoading()?'Yükleniyor…':'Raporları yenile'}}
           </button>
         </div>
         @if(reportsLoading()&&!dailyReports().length){
         <div class="panel reports-empty">
-          <span class="report-empty-icon">◌</span>
+          <span class="report-empty-icon"
+            ><i class="fa-solid fa-spinner fa-spin"></i></span
+          >
           <h2>Analizler yükleniyor</h2>
           <p>Kaydedilmiş günlük fabrika raporları getiriliyor.</p>
         </div>
@@ -718,7 +819,7 @@
                 <p>{{report.summary}}</p>
               </div>
               <div class="report-outlook">
-                <span>⌁</span>
+                <span><i class="fa-solid fa-chart-line"></i></span>
                 <div>
                   <h3>Sonraki gün görünümü</h3>
                   <p>{{report.outlook}}</p>
@@ -744,7 +845,9 @@
                 type="button"
                 (click)="openById(asset.machineId)"
               >
-                <span class="machine-icon">▥</span>
+                <span class="machine-icon"
+                  ><i class="fa-solid fa-industry"></i></span
+                >
                 <span class="report-asset-copy">
                   <strong>{{asset.machine}}</strong>
                   <small>{{asset.summary}}</small>
@@ -758,7 +861,7 @@
               </button>
               } @empty {
               <div class="report-all-clear">
-                <span>✓</span>
+                <span><i class="fa-solid fa-check"></i></span>
                 <p>
                   <strong>Kritik ekipman bulunmuyor</strong>
                   <small>Tüm ekipmanlar normal izleme aralığında.</small>
@@ -770,7 +873,9 @@
         </article>
         } @empty { @if(!reportsLoading()){
         <div class="panel reports-empty">
-          <span class="report-empty-icon">▧</span>
+          <span class="report-empty-icon"
+            ><i class="fa-solid fa-file-waveform"></i></span
+          >
           <h2>Henüz günlük analiz oluşmadı</h2>
           <p>
             Otonom fabrikayı çalıştırın. Her simülasyon gününün sonunda o günün
@@ -781,7 +886,7 @@
             type="button"
             (click)="simulationMode='autonomous'; activate()"
           >
-            ▶ Otonom fabrikayı başlat
+            <i class="fa-solid fa-play"></i> Otonom fabrikayı başlat
           </button>
         </div>
         } }
@@ -805,12 +910,13 @@
               >{{event.timestamp|date:'d MMM · HH:mm'}}</time
             >
             <button type="button" (click)="openById(event.machineId)">
-              {{event.machine}} ↗
+              {{event.machine}}
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
             </button>
             <div class="risk-transition">
               <span class="pill" [attr.data-risk]="event.fromRisk"
                 >{{tr(event.fromRisk)}}</span
-              ><b>→</b
+              ><b><i class="fa-solid fa-arrow-right"></i></b
               ><span class="pill" [attr.data-risk]="event.toRisk"
                 >{{tr(event.toRisk)}}</span
               >
@@ -819,7 +925,7 @@
           </article>
           } @empty {
           <div class="events-empty">
-            <span>✓</span>
+            <span><i class="fa-solid fa-check"></i></span>
             <strong>Risk değişimi yok</strong>
             <p>Yeni bir risk olayı oluştuğunda burada görünecek.</p>
           </div>
@@ -842,9 +948,11 @@
         <p>{{m.mainIssue}}</p>
         <div>
           <button class="secondary" (click)="openMachine(m)">
-            Verileri incele</button
+            <i class="fa-solid fa-magnifying-glass-chart"></i> Verileri
+            incele</button
           ><button class="primary" [disabled]="busy()" (click)="createTask(m)">
-            ＋ Bakım görevi oluştur
+            <i class="fa-solid fa-plus"></i>
+            {{busy()?'Oluşturuluyor…':'Bakım görevi oluştur'}}
           </button>
         </div>
       </section>
@@ -937,13 +1045,18 @@
     <div class="copilot-layout">
       <section class="panel chat-panel">
         <div class="section-heading">
-          <h2><span class="purple">✧</span> Fabrika analiz asistanı</h2>
+          <h2>
+            <span class="purple"
+              ><i class="fa-solid fa-wand-magic-sparkles"></i></span
+            >
+            Fabrika analiz asistanı
+          </h2>
           <span class="pill neutral">ONAYLI FABRİKA VERİLERİ</span>
         </div>
         <div class="messages" aria-live="polite">
           @if(!messages().length){
           <div class="chat-welcome">
-            <span>✧</span>
+            <span><i class="fa-solid fa-wand-magic-sparkles"></i></span>
             <h2>Neyi incelemek istersiniz?</h2>
             <p>
               Riskleri, sensör değişimlerini ve bakım önceliklerini
@@ -962,7 +1075,8 @@
               @for(s of m.sources;track s.machineId){<button
                 (click)="openById(s.machineId)"
               >
-                ↗ {{s.name}} · {{s.timestamp|date:'HH:mm'}}</button
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                {{s.name}} · {{s.timestamp|date:'HH:mm'}}</button
               >}
             </div>
             }
@@ -983,7 +1097,7 @@
             type="submit"
             [disabled]="chatBusy()||!chatInput.trim()"
           >
-            Gönder ↑
+            Gönder <i class="fa-solid fa-arrow-up"></i>
           </button>
         </form>
         <p class="trust-note">
@@ -1000,12 +1114,14 @@
           [disabled]="chatBusy()"
           (click)="ask(q)"
         >
-          {{q}} <span>↗</span></button
+          {{q}}
+          <span><i class="fa-solid fa-arrow-up-right-from-square"></i></span
+        ></button
         >}
         <h3>Kullanılabilen veriler</h3>
-        <p>✓ Ekipman bilgileri ve risk sinyalleri</p>
-        <p>✓ Sensör geçmişi ve tahminler</p>
-        <p>✓ Bakım ve servis kayıtları</p>
+        <p><i class="fa-solid fa-check"></i> Ekipman bilgileri ve risk sinyalleri</p>
+        <p><i class="fa-solid fa-check"></i> Sensör geçmişi ve tahminler</p>
+        <p><i class="fa-solid fa-check"></i> Bakım ve servis kayıtları</p>
         <small
           >Doğrudan makine kontrolü veya harici fabrika verisi
           kullanılmaz.</small
@@ -1069,7 +1185,10 @@
     </section>
     }
     <footer>
-      <span>◈ ARKOZ AI <b>·</b> Demo analiz katmanı</span>
+      <span
+        ><i class="fa-solid fa-diamond"></i> ARKOZ AI <b>·</b> Demo analiz
+        katmanı</span
+      >
       <p>
         Yapay zekâ ve tahmin çıktıları karar desteği sağlar. Bakım ve işletme
         işlemleri, yetkin personel ve mevcut tesis güvenlik prosedürleri

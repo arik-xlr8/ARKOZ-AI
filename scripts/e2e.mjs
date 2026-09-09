@@ -66,6 +66,7 @@ try {
   await page
     .getByRole("heading", { name: "Fabrika genel durumu", exact: true })
     .waitFor();
+  await page.getByText("Ağrı Çimento Fabrikası", { exact: true }).waitFor();
   await page.locator(".calendar-day.current").waitFor();
   assert.equal((await page.locator(".calendar-month").innerText()).trim(), "EYLÜL");
   assert.equal((await page.locator(".calendar-year").innerText()).trim(), "2026");
@@ -98,11 +99,15 @@ try {
     (await api("/dashboard")).simulation.step > 0,
     "Scenario advances automatically",
   );
-  await page.getByRole("button", { name: "Ⅱ Duraklat", exact: true }).click();
+  await page.getByRole("button", { name: "Duraklat", exact: true }).click();
   await api("/simulation/pause", { paused: true });
   const progressed = (await api("/dashboard")).simulation.step;
   await api("/simulation/step", { steps: Math.max(1, 16 - progressed) });
-  await page.locator(".refresh-button").click();
+  await page.locator(".top-refresh").click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "itibarıyla yenilendi" })
+    .waitFor();
   const d = await api("/dashboard");
   const motor = d.machines.find((m) => m.id === "kiln-main-motor");
   assert.ok(
@@ -119,7 +124,7 @@ try {
     .getByRole("heading", { name: "Yapay zekâ değerlendirmesi", exact: false })
     .waitFor();
   await page
-    .getByRole("button", { name: "＋ Bakım görevi oluştur", exact: true })
+    .getByRole("button", { name: "Bakım görevi oluştur", exact: true })
     .waitFor();
   assert.equal(await page.locator("sensor-chart").count(), 2);
   assert.ok(await page.locator("sensor-chart path").first().getAttribute("d"));
@@ -128,15 +133,14 @@ try {
     fullPage: true,
   });
   await page
-    .getByRole("button", { name: "＋ Bakım görevi oluştur", exact: true })
+    .getByRole("button", { name: "Bakım görevi oluştur", exact: true })
     .click();
   await page
     .getByRole("status")
     .filter({ hasText: "Bakım görevi oluşturuldu" })
     .waitFor();
   await page
-    .locator("nav")
-    .getByRole("button", { name: "Bakım", exact: false })
+    .getByRole("button", { name: "Bakım sayfasına git", exact: false })
     .click();
   await page
     .getByRole("heading", { name: "Bakım görevleri", exact: true })

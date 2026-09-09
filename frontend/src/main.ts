@@ -99,14 +99,14 @@ class App implements OnDestroy {
     return models.map((model) => tr(model)).join(", ");
   }
   pages = [
-    { name: "Genel Bakış", icon: "▦" },
-    { name: "Ekipmanlar", icon: "▤" },
-    { name: "Alarmlar", icon: "△" },
-    { name: "Tahminler", icon: "⌁" },
-    { name: "Günlük Analizler", icon: "▧" },
-    { name: "Bakım", icon: "⚒" },
-    { name: "Yapay Zekâ Asistanı", icon: "✧" },
-    { name: "Ayarlar", icon: "⚙" },
+    { name: "Genel Bakış", icon: "fa-solid fa-chart-pie" },
+    { name: "Ekipmanlar", icon: "fa-solid fa-gears" },
+    { name: "Alarmlar", icon: "fa-solid fa-triangle-exclamation" },
+    { name: "Tahminler", icon: "fa-solid fa-chart-line" },
+    { name: "Günlük Analizler", icon: "fa-solid fa-file-waveform" },
+    { name: "Bakım", icon: "fa-solid fa-screwdriver-wrench" },
+    { name: "Yapay Zekâ Asistanı", icon: "fa-solid fa-wand-magic-sparkles" },
+    { name: "Ayarlar", icon: "fa-solid fa-gear" },
   ];
   page = signal("Genel Bakış");
   dash = signal<Dashboard | null>(null);
@@ -132,6 +132,7 @@ class App implements OnDestroy {
   error = signal("");
   notice = signal("");
   busy = signal(false);
+  manualRefreshing = signal(false);
   chatBusy = signal(false);
   messages = signal<ChatMessage[]>([]);
   search = "";
@@ -273,9 +274,17 @@ class App implements OnDestroy {
           : "Bağlantı kurulamadı",
     );
   }
-  async refresh() {
-    if (this.refreshing) return;
+  async refresh(showFeedback = false) {
+    if (this.refreshing) {
+      if (showFeedback)
+        this.notice.set("Veriler zaten yenileniyor. Güncel sonuçlar birazdan gösterilecek.");
+      return;
+    }
     this.refreshing = true;
+    if (showFeedback) {
+      this.manualRefreshing.set(true);
+      this.notice.set("");
+    }
     try {
       const d = await this.api<Dashboard>("/dashboard");
       this.dash.set(d);
@@ -298,10 +307,19 @@ class App implements OnDestroy {
       }
       if (this.page() === "Tahminler") await this.loadForecast();
       if (this.page() === "Günlük Analizler") await this.loadReports(false);
+      if (showFeedback)
+        this.notice.set(
+          `Fabrika, alarm ve bakım verileri ${new Intl.DateTimeFormat("tr-TR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }).format(new Date())} itibarıyla yenilendi.`,
+        );
     } catch (e) {
       this.fail(e);
     } finally {
       this.refreshing = false;
+      if (showFeedback) this.manualRefreshing.set(false);
     }
   }
   async navigate(page: string) {
@@ -534,6 +552,7 @@ class App implements OnDestroy {
   }
   async createTask(machine: Asset, title?: string) {
     this.busy.set(true);
+    this.notice.set("");
     try {
       await this.api("/maintenance", {
         machineId: machine.id,
@@ -640,15 +659,27 @@ class App implements OnDestroy {
     const m = this.machines().find((m) => m.id === id);
     if (m) void this.openMachine(m);
   }
+  machineIcon(type: string) {
+    const value = type.toLocaleLowerCase("tr-TR");
+    if (value.includes("motor")) return "fa-gear";
+    if (value.includes("fan")) return "fa-fan";
+    if (value.includes("fırın")) return "fa-fire-flame-curved";
+    if (value.includes("soğutucu")) return "fa-snowflake";
+    if (value.includes("kırıcı")) return "fa-hammer";
+    if (value.includes("konveyör")) return "fa-forward";
+    if (value.includes("elevatör")) return "fa-arrow-up-wide-short";
+    if (value.includes("değirmen")) return "fa-gears";
+    return "fa-industry";
+  }
   trend(m: Asset) {
     const s = [...m.risk.signals].sort(
       (a, b) => (b.severity !== "LOW" ? 1 : 0) - (a.severity !== "LOW" ? 1 : 0),
     )[0];
     return s.ratePerHour > Math.abs(s.baseline) * 0.025
-      ? "↗ Yükseliyor"
+      ? "Yükseliyor"
       : s.ratePerHour < -Math.abs(s.baseline) * 0.025
-        ? "↘ Düşüyor"
-        : "→ Kararlı";
+        ? "Düşüyor"
+        : "Kararlı";
   }
 }
 bootstrapApplication(App, {
