@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import express from "express";
 import { z } from "zod";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { MockFactoryData, scenarios } from "./data.js";
 import { FactoryService } from "./factory.js";
 import { createAnalysisProvider, type AnalysisResult } from "./analysis.js";
@@ -18,6 +18,8 @@ const data = new MockFactoryData(),
   reports = new ReportService(factory),
   copilot = new FactoryCopilot(factory, analysis, reports);
 const analysisCache = new Map<string, Promise<AnalysisResult>>();
+const appPassword = process.env.APP_PASSWORD ?? "admin123";
+const sessions = new Set<string>();
 let updating = false;
 let updateQueue = Promise.resolve();
 const maxSimulationSteps = () =>
@@ -99,6 +101,33 @@ app.get("/api/health", async (_req, res) => {
       : "deterministic",
     storage: "in-memory",
   });
+});
+app.post("/api/auth/login", (req, res) => {
+  const { password } = z
+    .object({ password: z.string().min(1).max(128) })
+    .strict()
+    .parse(req.body);
+  const candidate = Buffer.from(password);
+  const expected = Buffer.from(appPassword);
+  if (
+    candidate.length !== expected.length ||
+    !timingSafeEqual(candidate, expected)
+  ) {
+    res.status(401).json({ error: "Şifre hatalı" });
+    return;
+  }
+  if (sessions.size >= 256) sessions.clear();
+  const token = randomBytes(32).toString("base64url");
+  sessions.add(token);
+  res.json({ authenticated: true, token });
+});
+app.use("/api", (req, res, next) => {
+  const token = req.header("x-arkoz-session");
+  if (!token || !sessions.has(token)) {
+    res.status(401).json({ error: "Oturum açmanız gerekiyor" });
+    return;
+  }
+  next();
 });
 app.get("/api/dashboard", async (_req, res) =>
   res.json({ ...(await factory.dashboard()), simulation: state() }),

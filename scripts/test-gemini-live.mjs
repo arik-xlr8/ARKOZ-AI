@@ -1,19 +1,33 @@
 import assert from "node:assert/strict";
 const base = "http://localhost:4200/api";
+let authToken = "";
+async function authenticate() {
+  const response = await fetch(base + "/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: process.env.APP_PASSWORD ?? "admin123" }),
+  });
+  if (!response.ok) throw Error("login HTTP " + response.status);
+  authToken = (await response.json()).token;
+}
 async function api(path, body) {
   const r = await fetch(
     base + path,
     body === undefined
-      ? undefined
+      ? { headers: { "X-Arkoz-Session": authToken } }
       : {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-Arkoz-Session": authToken,
+          },
           body: JSON.stringify(body),
         },
   );
   if (!r.ok) throw Error(path + " HTTP " + r.status);
   return r.json();
 }
+await authenticate();
 try {
   await api("/simulation/activate", { scenarioId: "bearing" });
   await api("/simulation/pause", { paused: true });

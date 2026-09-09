@@ -1,3 +1,48 @@
+@if(!authenticated()){
+<section class="login-page">
+  <form class="login-card" (ngSubmit)="login()">
+    <div class="login-lock" aria-hidden="true">
+      <i class="fa-solid fa-lock"></i>
+    </div>
+    <img
+      class="login-logo"
+      src="/branding/arkoz_logo.PNG"
+      alt="ARKOZ AI"
+      width="62"
+      height="62"
+    />
+    <div class="login-brand">ARKOZ <b>AI</b></div>
+    <p>Fabrika analiz paneline giriş yapın.</p>
+    <label for="login-password">Şifre</label>
+    <div class="login-password-field">
+      <i class="fa-solid fa-key" aria-hidden="true"></i>
+      <input
+        id="login-password"
+        name="loginPassword"
+        type="password"
+        autocomplete="current-password"
+        placeholder="Şifrenizi girin"
+        required
+        autofocus
+        [(ngModel)]="loginPassword"
+      />
+    </div>
+    @if(loginError()){
+    <div class="login-error" role="alert">
+      <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+      {{loginError()}}
+    </div>
+    }
+    <button class="login-submit" type="submit" [disabled]="loginBusy()">
+      <i
+        [class]="loginBusy()?'fa-solid fa-spinner fa-spin':'fa-solid fa-right-to-bracket'"
+        aria-hidden="true"
+      ></i>
+      {{loginBusy()?'Giriş yapılıyor…':'Giriş yap'}}
+    </button>
+  </form>
+</section>
+} @else {
 <aside class="sidebar">
   <a class="brand" href="#dashboard" (click)="navigate('Genel Bakış')"
     ><img
@@ -1201,3 +1246,4 @@
     </footer>
   </main>
 </div>
+}

@@ -1,0 +1,4 @@
+Giriş sayfası arka plan görselini bu klasöre login-background.jpg adıyla koyun.
+
+Tam yol:
+frontend/public/branding/login-background.jpg

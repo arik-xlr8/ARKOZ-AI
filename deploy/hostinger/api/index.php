@@ -43,6 +43,15 @@ if (is_string($query) && $query !== '') {
 }
 
 $responseType = 'application/json; charset=utf-8';
+$requestHeaders = [
+    'Accept: application/json',
+    'Content-Type: ' . ($_SERVER['CONTENT_TYPE'] ?? 'application/json'),
+    'X-Forwarded-Host: ' . ($_SERVER['HTTP_HOST'] ?? 'fanscore.pro'),
+    'X-Forwarded-Proto: https',
+];
+if (!empty($_SERVER['HTTP_X_ARKOZ_SESSION'])) {
+    $requestHeaders[] = 'X-Arkoz-Session: ' . $_SERVER['HTTP_X_ARKOZ_SESSION'];
+}
 $curl = curl_init($target);
 curl_setopt_array($curl, [
     CURLOPT_CUSTOMREQUEST => $method,
@@ -51,12 +60,7 @@ curl_setopt_array($curl, [
     CURLOPT_CONNECTTIMEOUT => 10,
     CURLOPT_TIMEOUT => 180,
     CURLOPT_ENCODING => '',
-    CURLOPT_HTTPHEADER => [
-        'Accept: application/json',
-        'Content-Type: ' . ($_SERVER['CONTENT_TYPE'] ?? 'application/json'),
-        'X-Forwarded-Host: ' . ($_SERVER['HTTP_HOST'] ?? 'fanscore.pro'),
-        'X-Forwarded-Proto: https',
-    ],
+    CURLOPT_HTTPHEADER => $requestHeaders,
     CURLOPT_HEADERFUNCTION => static function ($handle, string $line) use (&$responseType): int {
         if (stripos($line, 'Content-Type:') === 0) {
             $responseType = trim(substr($line, strlen('Content-Type:')));

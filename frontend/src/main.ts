@@ -109,6 +109,10 @@ class App implements OnDestroy {
     { name: "Ayarlar", icon: "fa-solid fa-gear" },
   ];
   page = signal("Genel Bakış");
+  authenticated = signal(false);
+  loginBusy = signal(false);
+  loginError = signal("");
+  loginPassword = "";
   dash = signal<Dashboard | null>(null);
   selected = signal<Asset | null>(null);
   sensors = signal<Sensor[]>([]);
@@ -144,7 +148,9 @@ class App implements OnDestroy {
   horizon = 16;
   chatInput = "";
   alertFilter = "ACTIVE";
-  private timer: ReturnType<typeof setInterval>;
+  private timer?: ReturnType<typeof setInterval>;
+  private appStarted = false;
+  private authToken = sessionStorage.getItem("arkoz-session") ?? "";
   private refreshing = false;
   private detailVersion = 0;
   private routeHandler = () => void this.restoreRoute();
@@ -206,29 +212,78 @@ class App implements OnDestroy {
     };
   });
   constructor() {
+    if (this.authToken) {
+      this.authenticated.set(true);
+      this.startApplication();
+    }
+  }
+  private startApplication() {
+    if (this.appStarted) return;
+    this.appStarted = true;
     window.addEventListener("hashchange", this.routeHandler);
     void this.initialize();
     this.timer = setInterval(() => void this.refresh(), 3000);
   }
   ngOnDestroy() {
-    clearInterval(this.timer);
+    if (this.timer) clearInterval(this.timer);
+    window.removeEventListener("hashchange", this.routeHandler);
+  }
+  async login() {
+    if (this.loginBusy()) return;
+    this.loginBusy.set(true);
+    this.loginError.set("");
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: this.loginPassword }),
+      });
+      const result = await response
+        .json()
+        .catch(() => ({ error: "Giriş işlemi tamamlanamadı" }));
+      if (!response.ok || !result.token)
+        throw new Error(result.error ?? "Şifre hatalı");
+      this.authToken = result.token;
+      sessionStorage.setItem("arkoz-session", this.authToken);
+      this.loginPassword = "";
+      this.authenticated.set(true);
+      this.startApplication();
+    } catch (error) {
+      this.loginError.set(
+        error instanceof Error ? error.message : "Giriş işlemi tamamlanamadı",
+      );
+    } finally {
+      this.loginBusy.set(false);
+    }
+  }
+  private endSession() {
+    this.authToken = "";
+    sessionStorage.removeItem("arkoz-session");
+    this.authenticated.set(false);
+    this.loginPassword = "";
+    this.loginError.set("Oturum sona erdi. Lütfen tekrar giriş yapın.");
+    if (this.timer) clearInterval(this.timer);
+    this.timer = undefined;
+    this.appStarted = false;
     window.removeEventListener("hashchange", this.routeHandler);
   }
   async api<T>(path: string, body?: unknown, method = "POST"): Promise<T> {
     const r = await fetch(
       "/api" + path,
-      body !== undefined
-        ? {
-            method,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          }
-        : undefined,
+      {
+        method: body === undefined ? "GET" : method,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Arkoz-Session": this.authToken,
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      },
     );
     if (!r.ok) {
       const error = await r
         .json()
         .catch(() => ({ error: "İstek tamamlanamadı" }));
+      if (r.status === 401) this.endSession();
       throw new Error(error.error ?? "İstek tamamlanamadı");
     }
     return r.json();
@@ -250,9 +305,7 @@ class App implements OnDestroy {
     await this.refresh();
     const simulation = this.dash()?.simulation;
     if (simulation) {
-      this.simulationMode =
-        simulation.mode ??
-        (simulation.scenario === "normal" ? "autonomous" : "scenario");
+      this.simulationMode = "autonomous";
       this.simulationSeed = simulation.seed ?? this.simulationSeed;
     }
     await this.restoreRoute();

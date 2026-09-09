@@ -2,20 +2,35 @@ import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 const base = process.env.E2E_URL ?? "http://localhost:4200";
+let authToken = "";
+async function authenticate() {
+  const response = await fetch(base + "/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: process.env.APP_PASSWORD ?? "admin123" }),
+  });
+  assert.ok(response.ok, `login: ${response.status}`);
+  authToken = (await response.json()).token;
+  assert.ok(authToken);
+}
 async function api(path, body, method = "POST") {
   const r = await fetch(
     base + "/api" + path,
     body === undefined
-      ? undefined
+      ? { headers: { "X-Arkoz-Session": authToken } }
       : {
           method,
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-Arkoz-Session": authToken,
+          },
           body: JSON.stringify(body),
         },
   );
   assert.ok(r.ok, `${path}: ${r.status}`);
   return r.json();
 }
+await authenticate();
 const autonomous = await api("/simulation/activate", {
   mode: "autonomous",
   seed: 20260908,
@@ -51,6 +66,13 @@ page.on("pageerror", (e) => errors.push(e.message));
 try {
   await page.goto(base);
   assert.equal(await page.title(), "ARKOZ AI | Fabrika Analitiği");
+  await page.locator(".login-card").waitFor();
+  assert.equal(await page.locator(".login-lock .fa-lock").count(), 1);
+  await page.getByLabel("Şifre").fill("yanlis-sifre");
+  await page.getByRole("button", { name: "Giriş yap", exact: true }).click();
+  await page.getByRole("alert").filter({ hasText: "Şifre hatalı" }).waitFor();
+  await page.getByLabel("Şifre").fill(process.env.APP_PASSWORD ?? "admin123");
+  await page.getByRole("button", { name: "Giriş yap", exact: true }).click();
   assert.match(
     (await page.locator(".brand").innerText()).replace(/\s+/g, " "),
     /ARKOZ AI/,
@@ -67,6 +89,12 @@ try {
     .getByRole("heading", { name: "Fabrika genel durumu", exact: true })
     .waitFor();
   await page.getByText("Ağrı Çimento Fabrikası", { exact: true }).waitFor();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Otonom fabrika", exact: true })
+      .getAttribute("aria-pressed"),
+    "true",
+  );
   await page.locator(".calendar-day.current").waitFor();
   assert.equal((await page.locator(".calendar-month").innerText()).trim(), "EYLÜL");
   assert.equal((await page.locator(".calendar-year").innerText()).trim(), "2026");
