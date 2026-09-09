@@ -155,7 +155,7 @@ input::placeholder {
 }
 .login-password-field > i {
   padding-left: 16px;
-  padding-right: 11px;
+  padding-right: 25px;
   color: var(--brand);
   font-size: 14px;
 }
@@ -453,9 +453,6 @@ nav button.active {
   text-align: left;
   font-size: 13px;
 }
-.profile:hover {
-  color: var(--brand-dark);
-}
 .profile > span {
   border-radius: 50%;
   width: 32px;
@@ -749,13 +746,13 @@ main {
   align-items: stretch;
   gap: 16px;
   padding: 16px;
-  background: linear-gradient(105deg, #f1f5f6, #f1f4f6);
+  background: #ffffff;
   border: 1px solid #d7e0e0;
   border-radius: 7px;
   margin-bottom: 23px;
 }
 .simulation-strip.autonomous {
-  background: linear-gradient(105deg, #f1f6f5, #f1f4f6 68%);
+  background: #ffffff;
   border-color: #c7dbd4;
 }
 .simulation-heading-row {
@@ -1025,6 +1022,14 @@ tbody tr:last-child td {
 }
 tbody tr:hover {
   background: #f0f4f7;
+}
+.asset-summary-row {
+  cursor: pointer;
+}
+.asset-summary-row:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+  background: var(--brand-soft);
 }
 td small {
   display: block;
@@ -2626,7 +2631,7 @@ nav button.active {
 
 .simulation-strip,
 .simulation-strip.autonomous {
-  background: linear-gradient(105deg, #ffffff, #fff7f8 72%);
+  background: #ffffff;
   border-color: #efcbd2;
   box-shadow: 0 8px 24px rgba(70, 30, 38, 0.035);
 }
@@ -3005,7 +3010,7 @@ main {
 
 .seed-input > i {
   padding-left: 14px;
-  padding-right: 10px;
+  padding-right: 25px;
   color: var(--brand);
   font-size: 13px;
 }
@@ -3043,6 +3048,27 @@ main {
 .simulation-actions {
   padding-top: 10px;
   align-content: center;
+}
+
+.step-actions .text-button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border: 1px solid #f1c5cd;
+  border-radius: 6px;
+  background: #fff0f3;
+  color: var(--brand-dark);
+  text-align: center;
+  font-weight: 700;
+}
+
+.step-actions .text-button:hover:not(:disabled) {
+  border-color: #ebaeba;
+  background: #ffe5ea;
 }
 
 .asset-heading-meta {

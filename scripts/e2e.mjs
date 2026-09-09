@@ -96,6 +96,19 @@ try {
   await page
     .getByRole("heading", { name: "Fabrika genel durumu", exact: true })
     .waitFor();
+  const summaryRow = page.locator(".asset-summary-row").first();
+  const summaryMachine = (await summaryRow.locator(".asset-link").innerText())
+    .split("\n")[0]
+    .trim();
+  await summaryRow.locator("td").nth(2).click();
+  await page
+    .getByRole("heading", { name: summaryMachine, exact: true })
+    .waitFor();
+  await page
+    .locator("nav")
+    .getByRole("button", { name: "Genel Bakış", exact: false })
+    .click();
+  await page.locator(".asset-summary-row").first().waitFor();
   await page.getByText("Ağrı Çimento Fabrikası", { exact: true }).waitFor();
   assert.equal(
     await page

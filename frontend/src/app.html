@@ -454,7 +454,14 @@
             </thead>
             <tbody>
               @for(m of machines();track m.id){
-              <tr (click)="openMachine(m)">
+              <tr
+                class="asset-summary-row"
+                tabindex="0"
+                [attr.aria-label]="m.name + ' ekipman detayını aç'"
+                (click)="openMachine(m)"
+                (keydown.enter)="openMachine(m)"
+                (keydown.space)="$event.preventDefault();openMachine(m)"
+              >
                 <td>
                   <button
                     class="asset-link"
