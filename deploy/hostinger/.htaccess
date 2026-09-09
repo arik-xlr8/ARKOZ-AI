@@ -13,10 +13,10 @@ RewriteRule ^ - [L]
 RewriteRule ^ index.html [L]
 
 <IfModule mod_headers.c>
-  <FilesMatch "\.(?:css|js|woff2?|png|jpe?g|gif|svg|ico)$">
+  <FilesMatch "\.(?:woff2?|png|jpe?g|gif|svg|ico)$">
     Header set Cache-Control "public, max-age=604800"
   </FilesMatch>
-  <FilesMatch "^(?:index\.html)$">
+  <FilesMatch "^(?:index\.html|main\.js|styles\.css)$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
 </IfModule>
