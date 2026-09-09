@@ -1,0 +1,21 @@
+[Unit]
+Description=ARKOZ AI API
+After=network-online.target arkoz-forecast.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=arkoz
+Group=arkoz
+WorkingDirectory=/opt/arkoz-ai
+EnvironmentFile=-/opt/arkoz-ai/.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=FORECAST_SERVICE_URL=http://127.0.0.1:8000
+ExecStart=/usr/bin/node /opt/arkoz-ai/backend/dist/index.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target
