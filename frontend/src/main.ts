@@ -7,6 +7,7 @@ import { tr } from "../../backend/src/locale";
 registerLocaleData(localeTr);
 import { FormsModule } from "@angular/forms";
 import { SensorChart, type Point } from "./chart";
+import { ChartTooltip, type ChartTooltipRow } from "./chart-tooltip";
 import type {
   Asset,
   Alert,
@@ -88,9 +89,58 @@ interface FactoryCalendarDay {
   weekday: string;
   distance: number;
 }
+interface BillingPoint {
+  month: string;
+  label: string;
+  consumption: number;
+  unitPrice: number;
+  amount: number;
+  lower?: number;
+  upper?: number;
+}
+interface BillingCategory {
+  id: string;
+  label: string;
+  shortLabel: string;
+  icon: string;
+  unit: string;
+  color: string;
+  history: BillingPoint[];
+  forecast: BillingPoint[];
+  share: number;
+  changePercent: number;
+}
+interface BillingForecast {
+  seed: number;
+  currency: "TRY";
+  generatedAt: string;
+  forecastFallbackReason?: string;
+  historyMonths: number;
+  modelContextMonths: number;
+  forecastMonths: number;
+  model: string;
+  categories: BillingCategory[];
+  historyTotals: BillingPoint[];
+  outlook: BillingPoint[];
+  lastMonthTotal: number;
+  nextMonthTotal: number;
+  nextMonthLower: number;
+  nextMonthUpper: number;
+  changePercent: number;
+  averageMonthlyTotal: number;
+  electricityShare: number;
+  annualEstimate: number;
+  analysis: {
+    provider: "gemini" | "deterministic";
+    summary: string;
+    keyDrivers: string[];
+    recommendedActions: string[];
+    fallbackReason?: string;
+  };
+}
 @Component({
   selector: "app-root",
-  imports: [CommonModule, FormsModule, SensorChart],
+  imports: [CommonModule, FormsModule, SensorChart, ChartTooltip],
   templateUrl: "./app.html",
 })
 class App implements OnDestroy {
@@ -105,6 +155,7 @@ class App implements OnDestroy {
     { name: "Tahminler", icon: "fa-solid fa-chart-line" },
     { name: "Günlük Analizler", icon: "fa-solid fa-file-waveform" },
     { name: "Bakım", icon: "fa-solid fa-screwdriver-wrench" },
+    { name: "Fatura Tahmini", icon: "fa-solid fa-file-invoice-dollar" },
     { name: "Yapay Zekâ Asistanı", icon: "fa-solid fa-hexagon-nodes" },
     { name: "Ayarlar", icon: "fa-solid fa-gear" },
   ];
@@ -128,6 +179,9 @@ class App implements OnDestroy {
   dailyReports = signal<DailyReport[]>([]);
   eventReports = signal<EventReport[]>([]);
   reportsLoading = signal(false);
+  billing = signal<BillingForecast | null>(null);
+  billingLoading = signal(false);
+  showBillingHistory = signal(false);
   scenarios = signal<{ id: string; name: string }[]>([]);
   settings = signal<{
     thresholdLabel: string;
@@ -146,6 +200,8 @@ class App implements OnDestroy {
   search = "";
   simulationMode: "autonomous" | "scenario" = "autonomous";
   simulationSeed = 20260908;
+  billingSeed = 20260908;
+  billingFocus = signal("electricity");
   scenarioId = "bearing";
   forecastMachine = "kiln-main-motor";
   forecastMetric = "vibration";
@@ -271,6 +327,115 @@ class App implements OnDestroy {
       progress: Number(progress.toFixed(2)),
     };
   });
+  billingSeries = computed(() => {
+    const billing = this.billing();
+    if (!billing) return [];
+    if (this.billingFocus() === "total")
+      return [
+        ...billing.historyTotals.map((point) => ({
+          ...point,
+          forecast: false,
+        })),
+        ...billing.outlook.map((point) => ({ ...point, forecast: true })),
+      ];
+    const category = billing.categories.find(
+      (candidate) => candidate.id === this.billingFocus(),
+    );
+    if (!category) return [];
+    return [
+      ...category.history.map((point) => ({ ...point, forecast: false })),
+      ...category.forecast.map((point) => ({ ...point, forecast: true })),
+    ];
+  });
+  billingChartMax = computed(() =>
+    Math.max(
+      1,
+      ...this.billingSeries().map((point) => point.upper ?? point.amount),
+    ),
+  );
+  billingFocusLabel = computed(() =>
+    this.billingFocus() === "total"
+      ? "Toplam gider"
+      : (this.billing()?.categories.find(
+          (category) => category.id === this.billingFocus(),
+        )?.label ?? "Gider"),
+  );
+  billingFocusColor = computed(() =>
+    this.billingFocus() === "total"
+      ? "#e0002a"
+      : (this.billing()?.categories.find(
+          (category) => category.id === this.billingFocus(),
+        )?.color ?? "#e0002a"),
+  );
+  billingFocusCategory = computed(() =>
+    this.billing()?.categories.find(
+      (category) => category.id === this.billingFocus(),
+    ),
+  );
+  billingFocusForecast = computed(() => {
+    const billing = this.billing();
+    if (!billing) return [];
+    return this.billingFocus() === "total"
+      ? billing.outlook
+      : (this.billingFocusCategory()?.forecast ?? []);
+  });
+  billingFocusHistory = computed(() => {
+    const billing = this.billing();
+    if (!billing) return [];
+    return (
+      this.billingFocus() === "total"
+        ? billing.historyTotals
+        : (this.billingFocusCategory()?.history ?? [])
+    ).slice(-6);
+  });
+  billingFocusSummary = computed(() => {
+    const billing = this.billing();
+    if (!billing) return null;
+    if (this.billingFocus() === "total")
+      return {
+        periodLabel: billing.outlook[0].label,
+        contextLabel: "Toplam fatura",
+        nextMonthTotal: billing.nextMonthTotal,
+        lastMonthTotal: billing.lastMonthTotal,
+        lower: billing.nextMonthLower,
+        upper: billing.nextMonthUpper,
+        changePercent: billing.changePercent,
+        annualEstimate: billing.annualEstimate,
+      };
+    const category = billing.categories.find(
+      (candidate) => candidate.id === this.billingFocus(),
+    );
+    if (!category) return null;
+    const next = category.forecast[0];
+    const last = category.history.at(-1)!;
+    const averageForecast =
+      category.forecast.reduce((sum, point) => sum + point.amount, 0) /
+      Math.max(category.forecast.length, 1);
+    return {
+      periodLabel: `${billing.outlook[0].label} · ${category.shortLabel}`,
+      contextLabel: category.label,
+      nextMonthTotal: next.amount,
+      lastMonthTotal: last.amount,
+      lower: next.lower ?? next.amount,
+      upper: next.upper ?? next.amount,
+      changePercent: category.changePercent,
+      annualEstimate: averageForecast * 12,
+    };
+  });
+  recentBillingRows = computed(() => {
+    const billing = this.billing();
+    if (!billing) return [];
+    return billing.historyTotals.slice(-6).map((total, relativeIndex) => {
+      const index = billing.historyTotals.length - 6 + relativeIndex;
+      return {
+        ...total,
+        categories: billing.categories.map((category) => ({
+          id: category.id,
+          amount: category.history[index].amount,
+        })),
+      };
+    });
+  });
   constructor() {
     if (this.authToken) {
       this.authenticated.set(true);
@@ -337,7 +502,9 @@ class App implements OnDestroy {
       this.loginBusy.set(false);
     }
   }
-  private endSession(loginMessage = "Oturum sona erdi. Lütfen tekrar giriş yapın.") {
+  private endSession(
+    loginMessage = "Oturum sona erdi. Lütfen tekrar giriş yapın.",
+  ) {
     this.authToken = "";
     sessionStorage.removeItem("arkoz-session");
     this.profileMenuOpen.set(false);
@@ -356,17 +523,14 @@ class App implements OnDestroy {
     this.endSession("");
   }
   async api<T>(path: string, body?: unknown, method = "POST"): Promise<T> {
-    const r = await fetch(
-      "/api" + path,
-      {
-        method: body === undefined ? "GET" : method,
-        headers: {
-          "Content-Type": "application/json",
-          "X-Arkoz-Session": this.authToken,
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
+    const r = await fetch("/api" + path, {
+      method: body === undefined ? "GET" : method,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Arkoz-Session": this.authToken,
       },
-    );
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
     if (!r.ok) {
       const error = await r
         .json()
@@ -378,6 +542,11 @@ class App implements OnDestroy {
   }
   async restoreRoute() {
     const route = decodeURIComponent(location.hash.slice(1));
+    if (!route) {
+      window.history.replaceState(null, "", "#genel-bakış");
+      if (this.page() !== "Genel Bakış") await this.navigate("Genel Bakış");
+      return;
+    }
     if (route.startsWith("assets/")) {
       const id = route.slice(7);
       if (this.selected()?.id !== id || this.page() !== "Ekipman detayı")
@@ -481,7 +650,10 @@ class App implements OnDestroy {
   async navigate(page: string) {
     this.page.set(page);
     this.notice.set("");
+    const route = page.toLowerCase().replaceAll(" ", "-");
+    if (location.hash !== "#" + route) location.hash = route;
     if (page === "Tahminler") await this.loadForecast();
+    if (page === "Fatura Tahmini") await this.loadBilling();
     if (page === "Günlük Analizler") await this.loadReports();
     if (page === "Ayarlar")
       try {
@@ -489,7 +661,6 @@ class App implements OnDestroy {
       } catch (e) {
         this.fail(e);
       }
-    location.hash = page.toLowerCase().replaceAll(" ", "-");
   }
   filteredMachines() {
     return this.machines().filter((m) =>
@@ -675,6 +846,94 @@ class App implements OnDestroy {
       if (showLoading) this.reportsLoading.set(false);
     }
   }
+  async loadBilling(showFeedback = false) {
+    if (this.billingLoading()) return;
+    this.billingLoading.set(true);
+    if (showFeedback) this.notice.set("");
+    try {
+      const seed = Math.min(
+        2_147_483_647,
+        Math.max(1, Math.trunc(Number(this.billingSeed) || 20260908)),
+      );
+      this.billingSeed = seed;
+      this.billing.set(
+        await this.api<BillingForecast>(
+          "/billing?seed=" + encodeURIComponent(seed),
+        ),
+      );
+      if (showFeedback)
+        this.notice.set(
+          `${seed} tohumu ile fatura geçmişi ve yeni tahmin oluşturuldu.`,
+        );
+    } catch (e) {
+      this.fail(e);
+    } finally {
+      this.billingLoading.set(false);
+    }
+  }
+  randomizeBillingSeed() {
+    this.billingSeed = Math.floor(Math.random() * 2_147_483_646) + 1;
+    void this.loadBilling(true);
+  }
+  formatBillingCurrency(amount: number) {
+    return `${Math.round(amount).toLocaleString("tr-TR")} ₺`;
+  }
+  formatBillingCompact(amount: number) {
+    return `${(amount / 1_000_000).toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MN ₺`;
+  }
+  billingPeriodDetail(point: BillingPoint) {
+    const category = this.billingFocusCategory();
+    if (!category) return "Toplam fabrika gideri";
+    return `${Math.round(point.consumption).toLocaleString("tr-TR")} ${category.unit} · ${point.unitPrice.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 3 })} ₺/${category.unit}`;
+  }
+  billingTooltipRows(
+    point: BillingPoint & { forecast: boolean },
+  ): ChartTooltipRow[] {
+    const rows: ChartTooltipRow[] = [
+      { label: "Tutar", value: this.formatBillingCurrency(point.amount) },
+    ];
+    const category = this.billing()?.categories.find(
+      (candidate) => candidate.id === this.billingFocus(),
+    );
+    if (category) {
+      rows.push(
+        {
+          label: "Tüketim",
+          value: `${Math.round(point.consumption).toLocaleString("tr-TR")} ${category.unit}`,
+        },
+        {
+          label: "Birim fiyat",
+          value: `${point.unitPrice.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 3 })} ₺/${category.unit}`,
+        },
+      );
+    }
+    if (
+      point.forecast &&
+      point.lower !== undefined &&
+      point.upper !== undefined
+    )
+      rows.push({
+        label: "Tahmin aralığı",
+        value: `${this.formatBillingCompact(point.lower)} – ${this.formatBillingCompact(point.upper)}`,
+      });
+    return rows;
+  }
+  billingTooltipLabel(point: BillingPoint & { forecast: boolean }) {
+    return `${this.billingFocusLabel()}, ${point.label}, ${point.forecast ? "model tahmini" : "simüle geçmiş"}, ${this.billingTooltipRows(
+      point,
+    )
+      .map((row) => `${row.label}: ${row.value}`)
+      .join(", ")}`;
+  }
+  billingBarHeight(amount: number) {
+    return Math.max(4, (amount / this.billingChartMax()) * 100);
+  }
+  billingCategoryAmount(
+    row: ReturnType<typeof this.recentBillingRows>[number],
+    id: string,
+  ) {
+    return row.categories.find((category) => category.id === id)?.amount ?? 0;
+  }
   pageDescription() {
     if (this.page() === "Genel Bakış")
       return "Ekipman sağlığını izleyin. İnceleme gerektiren durumları erken fark edin.";
@@ -682,6 +941,8 @@ class App implements OnDestroy {
       return `${this.selected()?.location ?? ""} · ${this.selected()?.type ?? ""}`;
     if (this.page() === "Tahminler")
       return "Sensör eğilimlerini ve tahmin edilen eşik aşımlarını inceleyin.";
+    if (this.page() === "Fatura Tahmini")
+      return "Enerji ve işletme giderlerini izleyin, bir sonraki fatura dönemini öngörün.";
     if (this.page() === "Günlük Analizler")
       return "Gün sonu fabrika değerlendirmelerini, ertesi gün görünümünü ve risk değişimlerini inceleyin.";
     if (this.page() === "Yapay Zekâ Asistanı")

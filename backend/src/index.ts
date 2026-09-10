@@ -8,6 +8,7 @@ import { createAnalysisProvider, type AnalysisResult } from "./analysis.js";
 import { FactoryCopilot } from "./copilot.js";
 import { RISK_CONFIG } from "./risk.js";
 import { ReportService } from "./reports.js";
+import { BillingService, type BillingForecast } from "./billing.js";
 dotenv.config({ path: process.env.ENV_FILE ?? ".env", quiet: true });
 const app = express();
 app.disable("x-powered-by");
@@ -16,14 +17,15 @@ const data = new MockFactoryData(),
   factory = new FactoryService(data),
   analysis = createAnalysisProvider(),
   reports = new ReportService(factory),
-  copilot = new FactoryCopilot(factory, analysis, reports);
+  copilot = new FactoryCopilot(factory, analysis, reports),
+  billing = new BillingService();
 const analysisCache = new Map<string, Promise<AnalysisResult>>();
+const billingCache = new Map<string, Promise<BillingForecast>>();
 const appPassword = process.env.APP_PASSWORD ?? "admin123";
 const sessions = new Set<string>();
 let updating = false;
 let updateQueue = Promise.resolve();
-const maxSimulationSteps = () =>
-  data.mode === "scenario" ? 32 : 30 * 96;
+const maxSimulationSteps = () => (data.mode === "scenario" ? 32 : 30 * 96);
 async function refresh(reportDay = data.day) {
   const assets = await factory.getCurrentRisks();
   reports.observe(assets, data.now, reportDay);
@@ -205,6 +207,24 @@ app.get("/api/maintenance", (_req, res) =>
 app.get("/api/reports", (_req, res) =>
   res.json({ daily: reports.dailyReports(), events: reports.riskEvents() }),
 );
+app.get("/api/billing", async (req, res) => {
+  const { seed } = z
+    .object({
+      seed: z.coerce.number().int().min(1).max(2147483647).default(data.seed),
+    })
+    .strict()
+    .parse(req.query);
+  const key = `${seed}:${data.now.slice(0, 7)}`;
+  if (billingCache.size > 24) billingCache.clear();
+  if (!billingCache.has(key))
+    billingCache.set(key, billing.forecast(seed, data.now));
+  try {
+    res.json(await billingCache.get(key));
+  } catch (error) {
+    billingCache.delete(key);
+    throw error;
+  }
+});
 app.post("/api/maintenance", async (req, res) => {
   const body = z
     .object({ machineId: z.string(), title: z.string().trim().min(3).max(200) })

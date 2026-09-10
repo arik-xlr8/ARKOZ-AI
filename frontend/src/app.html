@@ -45,12 +45,7 @@
 } @else if(appLoading()){
 <section class="app-loader" aria-live="polite" aria-busy="true">
   <div class="loader-card">
-    <img
-      src="/branding/arkoz_logo.PNG"
-      alt="ARKOZ AI"
-      width="58"
-      height="58"
-    />
+    <img src="/branding/arkoz_logo.PNG" alt="ARKOZ AI" width="58" height="58" />
     <strong>Fabrika verileri hazırlanıyor</strong>
     <p>Analizler, ekipmanlar ve bakım kayıtları yükleniyor.</p>
     <div class="loader-progress-heading">
@@ -71,7 +66,10 @@
 </section>
 } @else {
 <aside class="sidebar">
-  <a class="brand" href="#dashboard" (click)="navigate('Genel Bakış')"
+  <a
+    class="brand"
+    href="#genel-bakış"
+    (click)="$event.preventDefault(); navigate('Genel Bakış')"
     ><img
       class="brand-logo"
       src="/branding/arkoz_logo.PNG"
@@ -83,11 +81,16 @@
   >
   <div class="workspace-label">
     ÇALIŞMA ALANI
-    <span>{{activeMode()==='autonomous'?'OTONOM':'TEST'}}</span>
+    <span
+      >{{page()==='Fatura
+      Tahmini'?'FATURA':activeMode()==='autonomous'?'OTONOM':'TEST'}}</span
+    >
   </div>
   <nav>
     @for(item of pages;track item.name){<button
       [class.active]="page()===item.name || (page()==='Ekipman detayı'&&item.name==='Ekipmanlar')"
+      [class.billing-nav]="item.name==='Fatura Tahmini'"
+      [class.ai-nav]="item.name==='Yapay Zekâ Asistanı'"
       (click)="navigate(item.name)"
     >
       <i [class]="'nav-icon '+item.icon" aria-hidden="true"></i
@@ -99,8 +102,14 @@
     >}
   </nav>
   <div class="sidebar-bottom">
-    <div class="connection"><i></i> Simülasyon bağlı</div>
-    <p>Analiz katmanı · Salt okunur</p>
+    <div class="connection">
+      <i></i> {{page()==='Fatura Tahmini'?'Tahmin servisleri bağlı':'Simülasyon
+      bağlı'}}
+    </div>
+    <p>
+      {{page()==='Fatura Tahmini'?'TimesFM · Gemini':'Analiz katmanı · Salt
+      okunur'}}
+    </p>
     <div class="profile-shell">
       @if(profileMenuOpen()){
       <div class="profile-menu" role="menu">
@@ -159,7 +168,8 @@
       </button>
     </div>
   </header>
-  <main>
+  <main [class.billing-page]="page()==='Fatura Tahmini'">
+    @if(page()!=='Fatura Tahmini'){
     <div class="breadcrumb">
       Çalışma alanı <span>/</span> {{page()==='Ekipman detayı'?'Ekipmanlar /
       '+selected()?.name:page()}}
@@ -188,8 +198,7 @@
           </span>
           <strong>{{state.label}}</strong>
         </div>
-        }
-        @if(factoryCalendar(); as calendar){
+        } @if(factoryCalendar(); as calendar){
         <section
           class="factory-calendar"
           [attr.aria-label]="calendar.month + ' ' + calendar.year + ' fabrika takvimi'"
@@ -224,7 +233,7 @@
         </div>
       </div>
     </div>
-    @if(error()){
+    } @if(error()){
     <div class="banner error" role="alert">
       {{error()}} <button (click)="refresh()">Tekrar dene</button>
     </div>
@@ -247,7 +256,7 @@
         <i class="fa-solid fa-xmark" aria-hidden="true"></i>
       </button>
     </div>
-    }
+    } @if(page()!=='Fatura Tahmini'){
     <section
       class="simulation-strip"
       [class.autonomous]="simulationMode==='autonomous'"
@@ -366,7 +375,7 @@
         </div>
       </div>
     </section>
-    @if(!dash()){
+    } @if(!dash()){
     <div class="empty">Fabrika analiz servisine bağlanılıyor…</div>
     } @if(page()==='Genel Bakış'&&dash();as d){
     <section class="kpi-grid">
@@ -467,7 +476,8 @@
                   [class.current]="time.offset === 0"
                   [class.future]="time.offset > 0"
                   [attr.aria-current]="time.offset === 0 ? 'time' : null"
-                >{{time.label}}</time>
+                  >{{time.label}}</time
+                >
                 }
               </div>
             </div>
@@ -898,6 +908,448 @@
       @if(forecasts()[s.metric]?.fallbackReason){
       <p class="muted">{{tr(forecasts()[s.metric]?.fallbackReason || '')}}</p>
       }
+    </section>
+    } } @if(page()==='Fatura Tahmini'){
+    <section class="panel billing-controls">
+      <div class="billing-control-copy">
+        <span class="billing-control-icon" aria-hidden="true"
+          ><i class="fa-solid fa-file-invoice-dollar"></i
+        ></span>
+        <div>
+          <span class="eyebrow">SEEDLİ GİDER SİMÜLASYONU</span>
+          <h2>Fatura tahmin modeli</h2>
+          <p>
+            Aynı tohum aynı 18 aylık fatura geçmişini ve tahmin akışını üretir.
+          </p>
+        </div>
+      </div>
+      <label class="billing-seed-field" for="billing-seed">
+        <span>Fatura tohumu</span>
+        <span class="billing-seed-input">
+          <i class="fa-solid fa-hashtag" aria-hidden="true"></i>
+          <input
+            id="billing-seed"
+            name="billingSeed"
+            type="number"
+            min="1"
+            max="2147483647"
+            step="1"
+            [(ngModel)]="billingSeed"
+          />
+        </span>
+      </label>
+      <div class="billing-control-actions">
+        <button
+          class="secondary billing-random-button"
+          type="button"
+          [disabled]="billingLoading()"
+          aria-label="Rastgele fatura tohumu üret"
+          title="Rastgele tohum"
+          (click)="randomizeBillingSeed()"
+        >
+          <i class="fa-solid fa-dice" aria-hidden="true"></i>
+        </button>
+        <button
+          class="primary"
+          type="button"
+          [disabled]="billingLoading()"
+          (click)="loadBilling(true)"
+        >
+          <i
+            class="fa-solid fa-wand-magic-sparkles"
+            [class.fa-spin]="billingLoading()"
+            aria-hidden="true"
+          ></i>
+          {{billingLoading()?'Hesaplanıyor…':'Modeli çalıştır'}}
+        </button>
+      </div>
+      <p class="billing-seed-note">
+        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+        Demo verisidir; gerçek kullanımda sayaç, tarife ve ERP faturalarıyla
+        değiştirilir.
+      </p>
+    </section>
+    @if(billingLoading()&&!billing()){
+    <section class="panel billing-loading" aria-live="polite">
+      <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
+      Fatura geçmişi ve tahmin hazırlanıyor…
+    </section>
+    } @if(billing();as bill){ @if(billingFocusSummary();as summary){
+    <section class="billing-kpi-grid" aria-label="Fatura tahmini özeti">
+      <article class="billing-kpi billing-kpi-primary">
+        <span>{{summary.periodLabel}} TAHMİNİ</span>
+        <strong
+          >{{summary.nextMonthTotal/1000000|number:'1.1-1'}}<small
+            >MN ₺</small
+          ></strong
+        >
+        <p>
+          <i class="fa-solid fa-receipt" aria-hidden="true"></i>
+          {{summary.contextLabel}} için bir sonraki dönem
+        </p>
+      </article>
+      <article class="billing-kpi">
+        <span>ÖNCEKİ AYA GÖRE</span>
+        <strong [class.cost-down]="summary.changePercent<0"
+          >{{summary.changePercent>0?'+':''}}{{summary.changePercent|number:'1.1-1'}}<small
+            >%</small
+          ></strong
+        >
+        <p>
+          {{summary.lastMonthTotal/1000000|number:'1.1-1'}} MN ₺ önceki dönem
+        </p>
+      </article>
+      <article class="billing-kpi">
+        <span>TAHMİN ARALIĞI</span>
+        <strong class="billing-range-value"
+          >{{summary.lower/1000000|number:'1.1-1'}}<span
+            class="billing-range-separator"
+            aria-hidden="true"
+            >–</span
+          >{{summary.upper/1000000|number:'1.1-1'}}<small>MN ₺</small></strong
+        >
+        <p>Fiyat ve tüketim belirsizliği dahil</p>
+      </article>
+      <article class="billing-kpi">
+        <span>YILLIKLANDIRILMIŞ GİDER</span>
+        <strong
+          >{{summary.annualEstimate/1000000|number:'1.0-0'}}<small
+            >MN ₺</small
+          ></strong
+        >
+        <p>6 aylık görünüm üzerinden</p>
+      </article>
+    </section>
+    }
+
+    <div class="billing-main-grid">
+      <section
+        class="panel billing-chart-panel"
+        [style.--billing-accent]="billingFocusColor()"
+      >
+        <div class="billing-panel-heading">
+          <div>
+            <span class="eyebrow">18 AY GEÇMİŞ · 6 AY TAHMİN</span>
+            <h2>{{billingFocusLabel()}}</h2>
+          </div>
+          <div
+            class="billing-focus-tabs"
+            role="group"
+            aria-label="Grafik gideri"
+          >
+            <button
+              type="button"
+              [class.active]="billingFocus()==='total'"
+              (click)="billingFocus.set('total')"
+            >
+              Toplam
+            </button>
+            @for(category of bill.categories;track category.id){
+            <button
+              type="button"
+              [class.active]="billingFocus()===category.id"
+              (click)="billingFocus.set(category.id)"
+            >
+              {{category.shortLabel}}
+            </button>
+            }
+          </div>
+        </div>
+        <div class="billing-chart-legend">
+          <span><i class="actual"></i>Gerçekleşen demo faturalar</span>
+          <span><i class="predicted"></i>Model tahmini</span>
+        </div>
+        <div class="billing-chart-scroll">
+          <div
+            class="billing-chart"
+            role="img"
+            [attr.aria-label]="billingFocusLabel() + ' aylık fatura grafiği'"
+          >
+            <div class="billing-grid-lines" aria-hidden="true">
+              <i></i><i></i><i></i><i></i>
+            </div>
+            <div class="billing-bars">
+              @for(point of billingSeries();track point.month){
+              <div
+                class="billing-bar-column chart-data-point"
+                [class.forecast]="point.forecast"
+                [class.forecast-start]="$index===18"
+                tabindex="0"
+                [attr.aria-label]="billingTooltipLabel(point)"
+              >
+                @if($index===18){
+                <b class="billing-bar-value"
+                  >{{point.amount/1000000|number:'1.1-1'}} MN</b
+                >
+                }
+                <span
+                  class="billing-bar"
+                  [style.height.%]="billingBarHeight(point.amount)"
+                ></span>
+                <small>{{$index%2===0?point.label:''}}</small>
+                <chart-tooltip
+                  [title]="billingFocusLabel() + ' · ' + point.label"
+                  [subtitle]="point.forecast?'MODEL TAHMİNİ':'SİMÜLE GEÇMİŞ'"
+                  [rows]="billingTooltipRows(point)"
+                  placement="bottom"
+                  [align]="$first?'start':$last?'end':'center'"
+                />
+              </div>
+              }
+            </div>
+          </div>
+        </div>
+        <div class="billing-model-note">
+          <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
+          <span
+            ><strong>{{tr(bill.model)}}</strong> · {{bill.modelContextMonths}}
+            aylık tüketim ve birim fiyat serileri gerçek tahmin servisine
+            gönderildi.</span
+          >
+        </div>
+        @if(bill.forecastFallbackReason){
+        <div class="billing-provider-warning" role="status">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          {{tr(bill.forecastFallbackReason)}}
+        </div>
+        }
+      </section>
+
+      <aside class="panel next-invoice-card">
+        <div class="next-invoice-heading">
+          <span><i class="fa-solid fa-calendar-check"></i></span>
+          <div>
+            <small>BİR SONRAKİ DÖNEM</small>
+            <h2>{{bill.outlook[0].label}}</h2>
+          </div>
+        </div>
+        <div class="next-invoice-total">
+          <span>Beklenen toplam</span>
+          <strong>{{bill.nextMonthTotal|number:'1.0-0'}} ₺</strong>
+          <small
+            >{{bill.nextMonthLower|number:'1.0-0'}} ₺ ile
+            {{bill.nextMonthUpper|number:'1.0-0'}} ₺ arası</small
+          >
+        </div>
+        <div class="invoice-breakdown">
+          @for(category of bill.categories;track category.id){
+          <button type="button" (click)="billingFocus.set(category.id)">
+            <i [class]="category.icon" [style.color]="category.color"></i>
+            <span>{{category.shortLabel}}</span>
+            <b>{{category.forecast[0].amount/1000000|number:'1.1-1'}} MN ₺</b>
+          </button>
+          }
+        </div>
+        <div class="billing-provider-status">
+          <span
+            ><i class="fa-solid fa-wave-square"></i> Tahmin modeli
+            <b>{{tr(bill.model)}}</b></span
+          >
+          <span
+            ><i class="fa-solid fa-hexagon-nodes-bolt"></i> Yorumlayıcı
+            <b
+              >{{bill.analysis.provider==='gemini'?'Gemini':'Kural tabanlı
+              yedek'}}</b
+            ></span
+          >
+        </div>
+      </aside>
+    </div>
+
+    <section class="billing-category-grid" aria-label="Gider kalemleri">
+      @for(category of bill.categories;track category.id){
+      <button
+        type="button"
+        class="billing-category-card"
+        [class.active]="billingFocus()===category.id"
+        (click)="billingFocus.set(category.id)"
+      >
+        <span class="billing-category-top">
+          <i [class]="category.icon" [style.color]="category.color"></i>
+          <span
+            >{{category.label}}<small
+              >{{category.share|number:'1.1-1'}}% pay</small
+            ></span
+          >
+          <b [class.cost-down]="category.changePercent<0"
+            >{{category.changePercent>0?'+':''}}{{category.changePercent|number:'1.1-1'}}%</b
+          >
+        </span>
+        <strong
+          >{{category.forecast[0].amount/1000000|number:'1.1-1'}} MN ₺</strong
+        >
+        <small
+          >{{category.forecast[0].consumption|number:'1.0-0'}} {{category.unit}}
+          · {{category.forecast[0].unitPrice|number:'1.2-3'}}
+          ₺/{{category.unit}}</small
+        >
+        <span class="billing-share-track"
+          ><i
+            [style.width.%]="category.share"
+            [style.background]="category.color"
+          ></i
+        ></span>
+      </button>
+      }
+    </section>
+
+    <section
+      class="panel billing-period-panel"
+      [style.--billing-accent]="billingFocusColor()"
+    >
+      <div class="billing-period-heading">
+        <div>
+          <span class="eyebrow">{{billingFocusLabel()}}</span>
+          <h2>Aylık fatura hücreleri</h2>
+          <p>Tahmin barlarının ayrıntılı altı aylık görünümü</p>
+        </div>
+        <button
+          type="button"
+          class="secondary billing-history-toggle"
+          [class.active]="showBillingHistory()"
+          [attr.aria-pressed]="showBillingHistory()"
+          (click)="showBillingHistory.set(!showBillingHistory())"
+        >
+          <i
+            [class]="showBillingHistory()?'fa-solid fa-eye-slash':'fa-solid fa-clock-rotate-left'"
+            aria-hidden="true"
+          ></i>
+          {{showBillingHistory()?'Son 6 ayı gizle':'Son 6 ayı göster'}}
+        </button>
+      </div>
+
+      @if(showBillingHistory()){
+      <div class="billing-period-group billing-period-history">
+        <div class="billing-period-label">
+          <span>GERÇEKLEŞEN</span><strong>Son 6 ay</strong>
+        </div>
+        <div class="billing-period-grid">
+          @for(point of billingFocusHistory();track point.month){
+          <article class="billing-period-card history">
+            <header><span>{{point.label}}</span><b>GEÇMİŞ</b></header>
+            <strong>{{formatBillingCompact(point.amount)}}</strong>
+            <small class="billing-period-exact"
+              >{{formatBillingCurrency(point.amount)}}</small
+            >
+            <p>{{billingPeriodDetail(point)}}</p>
+          </article>
+          }
+        </div>
+      </div>
+      }
+
+      <div class="billing-period-group billing-period-forecast">
+        <div class="billing-period-label">
+          <span>MODEL ÇIKTISI</span><strong>Gelecek 6 ay</strong>
+        </div>
+        <div class="billing-period-grid">
+          @for(point of billingFocusForecast();track point.month){
+          <article class="billing-period-card forecast">
+            <header><span>{{point.label}}</span><b>TAHMİN</b></header>
+            <strong>{{formatBillingCompact(point.amount)}}</strong>
+            <small class="billing-period-exact"
+              >{{formatBillingCurrency(point.amount)}}</small
+            >
+            <p>{{billingPeriodDetail(point)}}</p>
+            @if(point.lower!==undefined&&point.upper!==undefined){
+            <small class="billing-period-range"
+              >{{formatBillingCompact(point.lower)}} –
+              {{formatBillingCompact(point.upper)}}</small
+            >
+            }
+          </article>
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="panel billing-ai-panel">
+      <div class="billing-ai-heading">
+        <span><i class="fa-solid fa-hexagon-nodes-bolt"></i></span>
+        <div>
+          <small>YAPAY ZEKÂ MALİYET DEĞERLENDİRMESİ</small>
+          <h2>
+            {{bill.analysis.provider==='gemini'?'Gemini fatura yorumu':'Fatura
+            değerlendirmesi'}}
+          </h2>
+        </div>
+        <b [class.fallback]="bill.analysis.provider!=='gemini'"
+          >{{bill.analysis.provider==='gemini'?'GEMINI':'YEDEK YORUM'}}</b
+        >
+      </div>
+      <p class="billing-ai-summary">{{bill.analysis.summary}}</p>
+      <div class="billing-ai-columns">
+        <div>
+          <h3>
+            <i class="fa-solid fa-magnifying-glass-chart"></i> Öne çıkan
+            etkenler
+          </h3>
+          <ul>
+            @for(driver of bill.analysis.keyDrivers;track driver){
+            <li>{{driver}}</li>
+            }
+          </ul>
+        </div>
+        <div>
+          <h3><i class="fa-solid fa-list-check"></i> Önerilen kontroller</h3>
+          <ul>
+            @for(action of bill.analysis.recommendedActions;track action){
+            <li>{{action}}</li>
+            }
+          </ul>
+        </div>
+      </div>
+      @if(bill.analysis.fallbackReason){
+      <p class="billing-ai-fallback">
+        <i class="fa-solid fa-circle-info"></i> {{bill.analysis.fallbackReason}}
+      </p>
+      }
+      <footer>
+        Sayısal tahmini {{tr(bill.model)}} üretir; Gemini yalnızca bu çıktıyı ve
+        gider kırılımını yorumlar.
+      </footer>
+    </section>
+
+    <section class="panel billing-table-panel">
+      <div class="section-heading">
+        <div>
+          <h2>Son 6 aylık fatura dökümü</h2>
+          <p>Tüm tutarlar KDV hariç simülasyon değeridir.</p>
+        </div>
+        <span class="billing-electricity-share"
+          ><i class="fa-solid fa-bolt"></i> Gelecek dönem giderinin
+          <b>%{{bill.electricityShare|number:'1.1-1'}}</b> kadarı elektrik</span
+        >
+      </div>
+      <div class="table-scroll">
+        <table class="billing-table">
+          <thead>
+            <tr>
+              <th>Dönem</th>
+              @for(category of bill.categories;track category.id){
+              <th>{{category.shortLabel}}</th>
+              }
+              <th>Toplam</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(row of recentBillingRows();track row.month){
+            <tr>
+              <td><strong>{{row.label}}</strong></td>
+              @for(category of bill.categories;track category.id){
+              <td>
+                {{billingCategoryAmount(row,category.id)/1000000|number:'1.1-1'}}
+                MN ₺
+              </td>
+              }
+              <td>
+                <strong>{{row.amount/1000000|number:'1.1-1'}} MN ₺</strong>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     </section>
     } } @if(page()==='Günlük Analizler'){
     <div class="reports-layout">
@@ -1336,7 +1788,10 @@
         işlemleri, yetkin personel ve mevcut tesis güvenlik prosedürleri
         doğrultusunda onaylanmalıdır.
       </p>
-      <span>SİMÜLE EŞİKLER · GÜVENLİK SİSTEMİ DEĞİLDİR</span>
+      <span
+        >{{page()==='Fatura Tahmini'?'SİMÜLE FATURALAR · BÜTÇE
+        TAHMİNİDİR':'SİMÜLE EŞİKLER · GÜVENLİK SİSTEMİ DEĞİLDİR'}}</span
+      >
     </footer>
   </main>
 </div>

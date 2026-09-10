@@ -28,10 +28,14 @@ export const isAllowedAdvisoryText = (value: string) =>
 export function geminiRateLimitDelay(error: unknown): number | null {
   const record = error as { status?: number; message?: string };
   const message = record?.message ?? String(error);
-  const rateLimited = record?.status === 429 || /(?:\b429\b|rate\s*limit|quota exceeded)/i.test(message);
+  const rateLimited =
+    record?.status === 429 ||
+    /(?:\b429\b|rate\s*limit|quota exceeded)/i.test(message);
   if (!rateLimited) return null;
   const retry = message.match(/retry in\s+([\d.]+)s/i);
-  return retry ? Math.min(60_000, Math.ceil(Number(retry[1]) * 1_000) + 500) : 5_000;
+  return retry
+    ? Math.min(60_000, Math.ceil(Number(retry[1]) * 1_000) + 500)
+    : 5_000;
 }
 
 function enqueueGeminiRequest<T>(request: () => Promise<T>): Promise<T> {
@@ -75,6 +79,7 @@ export class GeminiJsonClient {
     schema: T,
     instruction: string,
     context: unknown,
+    timeoutMs = 45_000,
   ): Promise<z.infer<T>> {
     return enqueueGeminiRequest(async () => {
       const result = await this.client.interactions.create(
@@ -91,7 +96,7 @@ export class GeminiJsonClient {
           store: false,
           stream: false,
         },
-        { timeout: 45000, maxRetries: 1, retry_codes: [] },
+        { timeout: timeoutMs, maxRetries: 1, retry_codes: [] },
       );
       return schema.parse(JSON.parse(result.output_text ?? ""));
     });

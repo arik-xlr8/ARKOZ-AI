@@ -31,13 +31,13 @@ async function api(path, body, method = "POST") {
   return r.json();
 }
 await authenticate();
-const autonomous = await api("/simulation/activate", {
+const autonomous = await api("/simulation/reset", {
   mode: "autonomous",
   seed: 20260908,
 });
-assert.equal(autonomous.running, true);
+assert.equal(autonomous.running, false);
 assert.equal(autonomous.mode, "autonomous");
-await api("/simulation/pause", { paused: true });
+assert.equal(autonomous.step, 0);
 const health = await api("/health");
 assert.equal(health.forecast.status, "ok");
 const initial = await api("/dashboard");
@@ -88,7 +88,11 @@ try {
   const brandLogo = page.locator(".brand-logo");
   await brandLogo.waitFor();
   assert.equal(await brandLogo.getAttribute("src"), "/branding/arkoz_logo.PNG");
-  assert.ok(await brandLogo.evaluate((image) => image.complete && image.naturalWidth > 0));
+  assert.ok(
+    await brandLogo.evaluate(
+      (image) => image.complete && image.naturalWidth > 0,
+    ),
+  );
   assert.equal(
     await page.locator('link[rel="icon"]').getAttribute("href"),
     "/branding/arkoz-favicon.png?v=2",
@@ -117,8 +121,14 @@ try {
     "true",
   );
   await page.locator(".calendar-day.current").waitFor();
-  assert.equal((await page.locator(".calendar-month").innerText()).trim(), "EYLÜL");
-  assert.equal((await page.locator(".calendar-year").innerText()).trim(), "2026");
+  assert.equal(
+    (await page.locator(".calendar-month").innerText()).trim(),
+    "EYLÜL",
+  );
+  assert.equal(
+    (await page.locator(".calendar-year").innerText()).trim(),
+    "2026",
+  );
   assert.match(await page.locator(".calendar-day.current").innerText(), /8$/);
   const calendarStyle = await page.evaluate(() => ({
     pastOpacity: Number(
@@ -127,9 +137,8 @@ try {
     futureOpacity: Number(
       getComputedStyle(document.querySelector(".calendar-day.future")).opacity,
     ),
-    transition: getComputedStyle(
-      document.querySelector(".calendar-track"),
-    ).transitionDuration,
+    transition: getComputedStyle(document.querySelector(".calendar-track"))
+      .transitionDuration,
   }));
   assert.ok(calendarStyle.pastOpacity < calendarStyle.futureOpacity);
   assert.equal(calendarStyle.transition, "0.62s");
@@ -143,6 +152,140 @@ try {
   assert.equal(await timelineTimes.nth(5).getAttribute("aria-current"), "time");
   assert.equal(await page.locator(".timeline-day b").innerText(), "1");
   assert.equal(await page.locator(".timeline-step b").innerText(), "0");
+  await page
+    .getByRole("button", { name: "Fatura Tahmini", exact: true })
+    .click();
+  await page.locator(".billing-kpi-grid").waitFor();
+  const billingNav = page
+    .locator("nav")
+    .getByRole("button", { name: "Fatura Tahmini", exact: true });
+  assert.equal(await billingNav.count(), 1);
+  assert.ok((await billingNav.getAttribute("class")).includes("active"));
+  const billingNavColor = await billingNav.evaluate(
+    (element) => getComputedStyle(element).color,
+  );
+  assert.match(billingNavColor, /^rgb\((17|18), (97|100), (68|71)\)$/);
+  assert.equal(await page.locator(".simulation-strip").count(), 0);
+  assert.equal(await page.locator(".breadcrumb").count(), 0);
+  assert.equal(await page.locator(".page-heading").count(), 0);
+  assert.equal(await page.locator(".heading-actions").count(), 0);
+  assert.equal(await page.locator(".demo-badge").innerText(), "SİMÜLE VERİ");
+  assert.equal(await page.locator(".top-refresh").count(), 1);
+  assert.equal(await page.locator(".plant-selector .live").count(), 1);
+  assert.equal(await page.locator(".billing-kpi").count(), 4);
+  assert.equal(await page.locator(".billing-category-card").count(), 4);
+  assert.equal(await page.locator(".billing-bar-column").count(), 24);
+  assert.equal(await page.locator(".billing-bar-column.forecast").count(), 6);
+  const electricityBarLabel = await page
+    .locator(".billing-bar-column")
+    .first()
+    .getAttribute("aria-label");
+  const electricityKpi = await page.locator(".billing-kpi").first().innerText();
+  const electricityBarColor = await page
+    .locator(".billing-bar")
+    .first()
+    .evaluate((element) => getComputedStyle(element).backgroundColor);
+  await page
+    .locator(".billing-focus-tabs")
+    .getByRole("button", { name: "Su", exact: true })
+    .click();
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector(".billing-panel-heading h2")
+        ?.textContent?.trim() === "Su",
+  );
+  assert.equal(
+    await page.locator(".billing-panel-heading h2").innerText(),
+    "Su",
+  );
+  assert.notEqual(
+    await page
+      .locator(".billing-bar-column")
+      .first()
+      .getAttribute("aria-label"),
+    electricityBarLabel,
+  );
+  const waterKpi = await page.locator(".billing-kpi").first().innerText();
+  assert.notEqual(waterKpi, electricityKpi);
+  assert.match(waterKpi, /Su/i);
+  const rangeSeparator = await page
+    .locator(".billing-range-separator")
+    .evaluate((element) => ({
+      color: getComputedStyle(element).color,
+      paddingLeft: getComputedStyle(element).paddingLeft,
+      paddingRight: getComputedStyle(element).paddingRight,
+    }));
+  assert.equal(rangeSeparator.color, "rgb(48, 50, 56)");
+  assert.equal(rangeSeparator.paddingLeft, "7px");
+  assert.equal(rangeSeparator.paddingRight, "7px");
+  assert.notEqual(
+    await page
+      .locator(".billing-bar")
+      .first()
+      .evaluate((element) => getComputedStyle(element).backgroundColor),
+    electricityBarColor,
+  );
+  const forecastMarker = await page
+    .locator(".billing-bar-column.forecast-start")
+    .evaluate((element) => {
+      const style = getComputedStyle(element, "::before");
+      return { content: style.content, writingMode: style.writingMode };
+    });
+  assert.equal(forecastMarker.content, '"TAHMİN"');
+  assert.equal(forecastMarker.writingMode, "horizontal-tb");
+  const billingPoint = page.locator(".billing-bar-column").first();
+  await billingPoint.hover();
+  const billingTooltip = billingPoint.locator("chart-tooltip");
+  await billingTooltip.waitFor();
+  assert.match(await billingTooltip.innerText(), /Tutar/);
+  assert.match(await billingTooltip.innerText(), /Tüketim/);
+  const tooltipTypeScale = await billingTooltip.evaluate((element) => ({
+    title: Number.parseFloat(
+      getComputedStyle(element.querySelector(":scope > strong")).fontSize,
+    ),
+    amount: Number.parseFloat(
+      getComputedStyle(
+        element.querySelector(".tooltip-rows > span:first-child b"),
+      ).fontSize,
+    ),
+  }));
+  assert.ok(tooltipTypeScale.amount > tooltipTypeScale.title);
+  assert.equal(await page.locator(".billing-period-card.forecast").count(), 6);
+  assert.equal(await page.locator(".billing-period-card.history").count(), 0);
+  assert.match(
+    await page.locator(".billing-period-card.forecast").first().innerText(),
+    /TAHMİN/,
+  );
+  await page.locator(".billing-history-toggle").click();
+  await page.locator(".billing-period-card.history").first().waitFor();
+  assert.equal(await page.locator(".billing-period-card.history").count(), 6);
+  const historyBorder = await page
+    .locator(".billing-period-card.history")
+    .first()
+    .evaluate((element) => getComputedStyle(element).borderColor);
+  assert.match(historyBorder, /^rgba?\(224, 0, 42/);
+  await page.locator(".billing-ai-panel").waitFor();
+  assert.ok(
+    (await page.locator(".billing-ai-summary").innerText()).length > 20,
+  );
+  assert.equal(
+    await page.locator(".billing-provider-status > span").count(),
+    2,
+  );
+  const firstInvoice = await page
+    .locator(".next-invoice-total strong")
+    .innerText();
+  await page.locator("#billing-seed").fill("424242");
+  await page.getByRole("button", { name: "Modeli çalıştır" }).click();
+  await page.getByRole("status").filter({ hasText: "424242 tohumu" }).waitFor();
+  assert.notEqual(
+    await page.locator(".next-invoice-total strong").innerText(),
+    firstInvoice,
+  );
+  await page.goBack();
+  await page.locator(".asset-summary-row").first().waitFor();
+  assert.equal(decodeURIComponent(new URL(page.url()).hash), "#genel-bakış");
   await page
     .getByRole("button", { name: "Fırın Ana Motoru Pişirme Hattı" })
     .waitFor();
@@ -187,6 +330,12 @@ try {
     .waitFor();
   assert.equal(await page.locator("sensor-chart").count(), 2);
   assert.ok(await page.locator("sensor-chart path").first().getAttribute("d"));
+  const sensorPoint = page.locator("sensor-chart .sensor-chart-point").last();
+  await sensorPoint.hover();
+  const sensorTooltip = sensorPoint.locator("chart-tooltip");
+  await sensorTooltip.waitFor();
+  assert.match(await sensorTooltip.innerText(), /Değer/);
+  assert.match(await sensorTooltip.innerText(), /Uyarı eşiği/);
   await page.screenshot({
     path: "docs/screenshots/machine-detail.png",
     fullPage: true,
@@ -337,7 +486,11 @@ try {
   assert.equal(resetState.step, 0);
   assert.equal(resetState.day, 1);
   assert.equal((await api("/reports")).daily.length, 0);
-  assert.equal((await api("/alerts")).filter((alert) => alert.status !== "RESOLVED").length, 0);
+  assert.equal(
+    (await api("/alerts")).filter((alert) => alert.status !== "RESOLVED")
+      .length,
+    0,
+  );
   assert.equal((await api("/maintenance")).tasks.length, 0);
   assert.deepEqual(errors, []);
   const profileToggle = page.locator(".profile-toggle");

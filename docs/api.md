@@ -15,6 +15,7 @@ All Node endpoints use `/api`; request/response bodies are JSON. Invalid input r
 | POST | `/alerts/:id/acknowledge` | Mark active alert acknowledged (URL-encode alert ID) |
 | GET | `/maintenance` | Tasks and simulated historical maintenance records |
 | GET | `/reports` | Stored day-end assessments and deterministic risk-transition events for the active run |
+| GET | `/billing?seed=20260908` | Seeded 18-month utility and operating-cost history, six-month outlook and next-period interval |
 | POST | `/maintenance` | `{ "machineId": "kiln-main-motor", "title": "Inspect bearing condition" }` |
 | PATCH | `/maintenance/:id` | `{ "status": "IN_PROGRESS" }`; OPEN / IN_PROGRESS / COMPLETED |
 | POST | `/copilot/chat` | `{ "message": "Which machines should I inspect today?", "machineId": "optional-id" }` |
@@ -40,3 +41,5 @@ FastAPI: `GET /health`, `POST /forecast`, `POST /forecast/batch`, and generated 
 Forecast outputs include `machineId`, `metric`, `forecast: [{timestamp,value}]`, `model`, and optional `fallbackReason`. Confidence is intentionally absent.
 
 `GET /reports` returns `daily` and `events`. Daily reports contain the deterministic plant health, ranked assets, actual forecast model names, future predicted threshold crossings and a schema-validated Gemini narrative (or named deterministic fallback). A sensor already above its threshold is represented as a current condition rather than a new future crossing. Event entries are created at 15-minute risk-level transitions; the LLM does not decide those transitions.
+
+`GET /billing` creates a repeatable 48-month simulated context for electricity, natural gas/fuel, water, and raw-material/additive consumption and unit prices. Eight regular monthly series are sent as one batch to the configured Python forecast provider; the response exposes the latest 18 months and six forecast months. Category amounts are calculated from TimesFM-predicted consumption × TimesFM-predicted unit price, then Gemini receives the bounded numeric evidence to produce the Turkish summary, key drivers, and review actions. Both forecast and narrative responses name their actual provider and any fallback reason.

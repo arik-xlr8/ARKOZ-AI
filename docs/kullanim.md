@@ -36,6 +36,7 @@ Otonom mod 30 simülasyon gününde otomatik durur. Yeni bir çalışma için ay
 | Ekipmanlar | Ekipman arama, sensörler, grafikler ve bakım geçmişi |
 | Alarmlar | Uyarıları inceleme ve görüldü olarak işaretleme |
 | Tahminler | Ekipman, sensör ve 1–24 saatlik tahmin süresi seçimi |
+| Fatura Tahmini | Seedli elektrik, doğal gaz/yakıt, su ve hammadde faturaları ile gelecek dönem gider tahmini |
 | Günlük Analizler | Gün sonu Gemini değerlendirmeleri, ertesi gün görünümü ve risk olayları |
 | Bakım | Kontrol önerileri, görev oluşturma ve durum takibi |
 | Yapay Zekâ Asistanı | Güncel fabrika verilerine dayalı Türkçe soru-cevap |
@@ -48,3 +49,9 @@ Grafikte yeşil çizgi geçmişi, mor kesikli çizgi tahmini, sarı çizgi uyar�
 TimesFM sensör değerlerinin gelecek eğrisini ve olası simüle eşik geçişini üretir; kesin arıza tarihi vermez. Mevcut eşik aşımı ile gelecekte beklenen yeni geçiş panelde ayrı değerlendirilir. Sayısal risk kararını Gemini değil deterministik risk motoru verir. Gemini bu kanıtları, proses bağlantılarını ve bakım geçmişini kullanarak olası neden ve kontrol önerisi yazar.
 
 Tüm ekipman ve sensör verileri simüledir. Gemini veya TimesFM kullanılamazsa sağlayıcısı açıkça belirtilen yedek sonuç gösterilir. Panel gerçek makineleri kontrol etmez; eşikler üretici onaylı güvenlik sınırları değildir ve tahminler kesin arıza garantisi vermez.
+
+## Fatura tahmini
+
+Fatura paneline üst çubuğun sağındaki **Fatura Tahmini** düğmesiyle geçilir; seçiliyken düğmenin metni ve alt çizgisi kırmızı görünür. Bu panel fabrika simülasyonundan bağımsızdır ve otonom çalışma kontrollerini göstermez. Paneldeki tohum 48 aylık demo model girdisini belirler; ekran bunun son 18 ayını gösterir. Aynı tohumla **Modeli çalıştır** düğmesine tekrar bastığınızda aynı sayısal seri oluşur; zar düğmesi yeni bir tohum seçer. Elektrik, doğal gaz/yakıt, su ve hammadde/katkı için tüketim ve birim fiyat serileri TimesFM'e toplu gönderilir. Fatura tutarı TimesFM'in tahmin ettiği tüketim ile birim fiyatın çarpımından hesaplanır. Grafikte dolu kırmızı sütunlar geçmiş demo faturalarını, mor çerçeveli sütunlar gelecek altı dönem TimesFM tahminini gösterir. İlk tahmin dönemi ayrıca beklenen toplam ve belirsizlik aralığıyla gösterilir.
+
+Sayısal tahminden sonra Gemini yalnızca TimesFM çıktısını ve gider kırılımını yorumlayarak Türkçe özet, öne çıkan etkenler ve kontrol önerileri üretir. Panel kullanılan tahmin ve yorum sağlayıcılarını gösterir; bir servis kullanılamazsa yedek sonuç ayrıca belirtilir. Gerçek tesiste seedli geçmişin sayaç, enerji tarifesi, satın alma ve ERP fatura kayıtlarıyla değiştirilmesi gerekir.
