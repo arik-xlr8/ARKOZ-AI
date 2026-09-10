@@ -8,7 +8,11 @@ import { createAnalysisProvider, type AnalysisResult } from "./analysis.js";
 import { FactoryCopilot } from "./copilot.js";
 import { RISK_CONFIG } from "./risk.js";
 import { ReportService } from "./reports.js";
-import { BillingService, type BillingForecast } from "./billing.js";
+import {
+  BillingService,
+  billingScenarioAdjustmentsSchema,
+  type BillingForecast,
+} from "./billing.js";
 dotenv.config({ path: process.env.ENV_FILE ?? ".env", quiet: true });
 const app = express();
 app.disable("x-powered-by");
@@ -220,6 +224,26 @@ app.get("/api/billing", async (req, res) => {
     billingCache.set(key, billing.forecast(seed, data.now));
   try {
     res.json(await billingCache.get(key));
+  } catch (error) {
+    billingCache.delete(key);
+    throw error;
+  }
+});
+app.post("/api/billing/scenario", async (req, res) => {
+  const body = z
+    .object({
+      seed: z.number().int().min(1).max(2147483647),
+      adjustments: billingScenarioAdjustmentsSchema,
+    })
+    .strict()
+    .parse(req.body);
+  const key = `${body.seed}:${data.now.slice(0, 7)}`;
+  if (billingCache.size > 24) billingCache.clear();
+  if (!billingCache.has(key))
+    billingCache.set(key, billing.forecast(body.seed, data.now));
+  try {
+    const baseline = await billingCache.get(key)!;
+    res.json(await billing.scenario(baseline, body.adjustments));
   } catch (error) {
     billingCache.delete(key);
     throw error;

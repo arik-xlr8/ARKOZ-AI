@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {
   BillingService,
   billingNarrativeSchema,
+  billingScenarioNarrativeSchema,
   type BillingAnalysisProvider,
+  type BillingScenarioAnalysisProvider,
 } from "../src/billing.js";
 import type { ForecastProvider, ForecastRequest } from "../src/forecast.js";
 
@@ -47,6 +49,17 @@ const gemini: BillingAnalysisProvider = {
       summary: `${evidence.outlook[0].label} TimesFM tahmini yorumlandı.`,
       keyDrivers: ["Elektrik gider payı değerlendirildi."],
       recommendedActions: ["Bütçe aralığını kontrol edin."],
+    };
+  },
+};
+
+const scenarioGemini: BillingScenarioAnalysisProvider = {
+  async analyze(scenario) {
+    return {
+      provider: "gemini",
+      summary: `${scenario.label} doğrulanmış senaryo yorumu.`,
+      keyDrivers: ["Birim fiyat etkileri değerlendirildi."],
+      recommendedActions: ["Tarife varsayımlarını kontrol edin."],
     };
   },
 };
@@ -131,6 +144,86 @@ test("Gemini billing schema rejects unverified numerical claims", () => {
         "Tahmin bütçe planında belirsizlik aralığıyla değerlendirilmelidir.",
       driverCategoryIds: ["electricity", "fuel"],
       recommendedActions: ["Tarife varsayımlarını kontrol edin."],
+    }),
+  );
+});
+
+test("billing scenario applies signed unit-price assumptions to the TimesFM baseline", async () => {
+  const service = new BillingService(timesFm, gemini, scenarioGemini);
+  const forecast = await service.forecast(424242, "2026-09-08T16:15:00.000Z");
+  const result = await service.scenario(forecast, {
+    electricity: 20,
+    fuel: -10,
+    "raw-material": 0,
+    water: 5,
+  });
+
+  assert.equal(result.model, "timesfm-2.5");
+  assert.equal(result.month, forecast.outlook[0].month);
+  assert.equal(result.forecastMonths, 6);
+  assert.equal(result.outlook.length, 6);
+  assert.equal(
+    result.baselineTotal,
+    forecast.outlook.reduce((sum, point) => sum + point.amount, 0),
+  );
+  assert.equal(result.analysis.provider, "gemini");
+  assert.equal(
+    result.scenarioTotal,
+    result.categories.reduce(
+      (sum, category) => sum + category.scenarioTotal,
+      0,
+    ),
+  );
+  assert.equal(result.difference, result.scenarioTotal - result.baselineTotal);
+
+  const electricity = result.categories.find(
+    (category) => category.id === "electricity",
+  )!;
+  const fuel = result.categories.find((category) => category.id === "fuel")!;
+  const rawMaterial = result.categories.find(
+    (category) => category.id === "raw-material",
+  )!;
+  assert.equal(electricity.adjustmentPercent, 20);
+  assert.equal(electricity.points.length, 6);
+  assert.equal(
+    electricity.points[0].scenarioUnitPrice,
+    Math.round(electricity.points[0].baselineUnitPrice * 1.2 * 1_000) / 1_000,
+  );
+  assert.ok(electricity.scenarioTotal > electricity.baselineTotal);
+  assert.ok(fuel.scenarioTotal < fuel.baselineTotal);
+  assert.equal(rawMaterial.scenarioTotal, rawMaterial.baselineTotal);
+  electricity.points.slice(1).forEach((point, index) => {
+    const previous = electricity.points[index];
+    const baselineTrend = point.baselineUnitPrice / previous.baselineUnitPrice;
+    assert.equal(
+      point.scenarioUnitPrice,
+      Math.round(previous.scenarioUnitPrice * baselineTrend * 1_000) / 1_000,
+    );
+  });
+  result.outlook.forEach((point, index) =>
+    assert.equal(
+      point.scenarioAmount,
+      result.categories.reduce(
+        (sum, category) => sum + category.points[index].scenarioAmount,
+        0,
+      ),
+    ),
+  );
+});
+
+test("Gemini billing scenario schema rejects numerical claims", () => {
+  assert.throws(() =>
+    billingScenarioNarrativeSchema.parse({
+      summary: "Elektrik senaryosu %20 artış gösteriyor.",
+      focusCategoryIds: ["electricity"],
+      recommendedActions: ["Tarifeyi kontrol edin."],
+    }),
+  );
+  assert.doesNotThrow(() =>
+    billingScenarioNarrativeSchema.parse({
+      summary: "Bu varsayım bütçe esnekliği açısından izlenmelidir.",
+      focusCategoryIds: ["electricity", "fuel"],
+      recommendedActions: ["Tedarikçi tekliflerini karşılaştırın."],
     }),
   );
 });

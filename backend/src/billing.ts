@@ -60,6 +60,68 @@ export interface BillingForecast {
   analysis: BillingNarrative;
 }
 
+export const billingScenarioAdjustmentsSchema = z
+  .object({
+    electricity: z.number().finite().min(-100).max(500),
+    fuel: z.number().finite().min(-100).max(500),
+    "raw-material": z.number().finite().min(-100).max(500),
+    water: z.number().finite().min(-100).max(500),
+  })
+  .strict();
+
+export type BillingScenarioAdjustments = z.infer<
+  typeof billingScenarioAdjustmentsSchema
+>;
+
+export interface BillingScenarioPoint {
+  month: string;
+  label: string;
+  consumption: number;
+  baselineUnitPrice: number;
+  scenarioUnitPrice: number;
+  baselineAmount: number;
+  scenarioAmount: number;
+  difference: number;
+}
+
+export interface BillingScenarioCategory {
+  id: keyof BillingScenarioAdjustments;
+  label: string;
+  shortLabel: string;
+  icon: string;
+  unit: string;
+  color: string;
+  adjustmentPercent: number;
+  baselineTotal: number;
+  scenarioTotal: number;
+  difference: number;
+  points: BillingScenarioPoint[];
+}
+
+export interface BillingScenarioTotalPoint {
+  month: string;
+  label: string;
+  baselineAmount: number;
+  scenarioAmount: number;
+  difference: number;
+}
+
+export interface BillingScenario {
+  seed: number;
+  currency: "TRY";
+  month: string;
+  label: string;
+  model: string;
+  forecastMonths: number;
+  baselineTotal: number;
+  scenarioTotal: number;
+  difference: number;
+  changePercent: number;
+  categories: BillingScenarioCategory[];
+  outlook: BillingScenarioTotalPoint[];
+  analysis: BillingNarrative;
+}
+
 interface CategoryConfig {
   id: string;
   label: string;
@@ -78,6 +140,12 @@ interface BillingEvidence extends Omit<BillingForecast, "analysis"> {}
 
 export interface BillingAnalysisProvider {
   analyze(evidence: BillingEvidence): Promise<BillingNarrative>;
+}
+
+export interface BillingScenarioAnalysisProvider {
+  analyze(
+    scenario: Omit<BillingScenario, "analysis">,
+  ): Promise<BillingNarrative>;
 }
 
 const visibleHistoryMonths = 18;
@@ -278,6 +346,24 @@ export const billingNarrativeSchema = z
   })
   .strict();
 
+export const billingScenarioNarrativeSchema = z
+  .object({
+    summary: qualitativeNarrativeText.max(900),
+    focusCategoryIds: z
+      .array(z.enum(["electricity", "fuel", "raw-material", "water"]))
+      .min(1)
+      .max(4)
+      .refine(
+        (ids) => new Set(ids).size === ids.length,
+        "Focus categories must be unique",
+      ),
+    recommendedActions: z
+      .array(qualitativeNarrativeText.max(500))
+      .min(1)
+      .max(4),
+  })
+  .strict();
+
 export class DeterministicBillingAnalysisProvider implements BillingAnalysisProvider {
   async analyze(evidence: BillingEvidence): Promise<BillingNarrative> {
     const notable = [...evidence.categories].sort(
@@ -381,11 +467,263 @@ const createBillingAnalysisProvider = (): BillingAnalysisProvider =>
     ? new GeminiBillingAnalysisProvider(process.env.GEMINI_API_KEY)
     : new DeterministicBillingAnalysisProvider();
 
+export class DeterministicBillingScenarioAnalysisProvider implements BillingScenarioAnalysisProvider {
+  async analyze(
+    scenario: Omit<BillingScenario, "analysis">,
+  ): Promise<BillingNarrative> {
+    const changed = scenario.categories
+      .filter((category) => category.adjustmentPercent !== 0)
+      .sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
+    const direction =
+      scenario.difference > 0
+        ? "artırıyor"
+        : scenario.difference < 0
+          ? "azaltıyor"
+          : "değiştirmiyor";
+    const keyDrivers = changed.length
+      ? changed.map((category) => {
+          const assumption = category.adjustmentPercent > 0 ? "zam" : "indirim";
+          const categoryDirection =
+            category.difference >= 0 ? "artış" : "azalış";
+          return `${category.label}: %${Math.abs(category.adjustmentPercent).toLocaleString("tr-TR")} ${assumption} varsayımı, ${Math.abs(category.difference).toLocaleString("tr-TR")} ₺ ${categoryDirection} etkisi oluşturdu.`;
+        })
+      : [
+          "Birim fiyat varsayımları değiştirilmedi; senaryo baz tahminle aynı kaldı.",
+        ];
+    return {
+      provider: "deterministic",
+      summary: `${scenario.label} senaryosu altı aylık ${Math.round(scenario.scenarioTotal).toLocaleString("tr-TR")} ₺ toplam gider gösteriyor. Bu değer TimesFM baz tahminini ${Math.abs(Math.round(scenario.difference)).toLocaleString("tr-TR")} ₺ ${direction}.`,
+      keyDrivers,
+      recommendedActions: [
+        "Birim fiyat varsayımlarını güncel tarife ve tedarikçi teklifleriyle karşılaştırın.",
+        "Senaryo farkını gelecek dönem bütçesinde risk payı olarak değerlendirin.",
+      ],
+    };
+  }
+}
+
+export class GeminiBillingScenarioAnalysisProvider implements BillingScenarioAnalysisProvider {
+  private fallback = new DeterministicBillingScenarioAnalysisProvider();
+  private client: GeminiJsonClient;
+
+  constructor(key: string) {
+    this.client = new GeminiJsonClient(key);
+  }
+
+  async analyze(
+    scenario: Omit<BillingScenario, "analysis">,
+  ): Promise<BillingNarrative> {
+    try {
+      const result = await this.client.generate(
+        billingScenarioNarrativeSchema,
+        "You interpret a six-month what-if cost scenario built on a cement plant's TimesFM forecast. Each entered adjustment is a one-time unit-price shift in the first forecast month; later scenario prices carry that adjusted value forward using TimesFM's month-to-month price trend. Write every user-facing string in concise Turkish. Treat every supplied number as authoritative. Do not write digits, percentages, currency symbols, amounts, units, or dates; the application adds verified numerical claims. Do not invent tariffs, contracts, production events, causes, or savings. Explain the budget meaning of the assumptions and suggest checks. Select relevant categories only through focusCategoryIds. Clearly describe this as a scenario, not a certain future bill. No HTML.",
+        {
+          period: {
+            start: scenario.month,
+            label: scenario.label,
+            months: scenario.forecastMonths,
+          },
+          currency: scenario.currency,
+          forecastModel: scenario.model,
+          baselineTotal: scenario.baselineTotal,
+          scenarioTotal: scenario.scenarioTotal,
+          difference: scenario.difference,
+          changePercent: scenario.changePercent,
+          categories: scenario.categories.map((category) => ({
+            id: category.id,
+            name: category.label,
+            unit: category.unit,
+            unitPriceAdjustmentPercent: category.adjustmentPercent,
+            baselineTotal: category.baselineTotal,
+            scenarioTotal: category.scenarioTotal,
+            difference: category.difference,
+            months: category.points.map((point) => ({
+              month: point.month,
+              predictedConsumption: point.consumption,
+              baselineUnitPrice: point.baselineUnitPrice,
+              assumedUnitPrice: point.scenarioUnitPrice,
+              baselineAmount: point.baselineAmount,
+              scenarioAmount: point.scenarioAmount,
+              difference: point.difference,
+            })),
+          })),
+          sixMonthOutlook: scenario.outlook,
+        },
+        Math.max(
+          1_000,
+          Number(process.env.GEMINI_BILLING_TIMEOUT_MS ?? 25_000),
+        ),
+      );
+      const direction =
+        scenario.difference > 0
+          ? "artırıyor"
+          : scenario.difference < 0
+            ? "azaltıyor"
+            : "değiştirmiyor";
+      const byId = new Map(
+        scenario.categories.map((category) => [category.id, category]),
+      );
+      const changedIds = new Set(
+        scenario.categories
+          .filter((category) => category.adjustmentPercent !== 0)
+          .map((category) => category.id),
+      );
+      const focusIds = result.focusCategoryIds.filter((id) =>
+        changedIds.has(id),
+      );
+      const verifiedImpact =
+        scenario.difference === 0
+          ? "Girilen varsayımlar TimesFM baz tahminini değiştirmiyor."
+          : `Girilen varsayımlar toplamı ${Math.abs(Math.round(scenario.difference)).toLocaleString("tr-TR")} ₺, yani %${Math.abs(scenario.changePercent).toLocaleString("tr-TR")} ${direction}.`;
+      return {
+        provider: "gemini",
+        summary: `${scenario.label} senaryosu altı aylık ${Math.round(scenario.scenarioTotal).toLocaleString("tr-TR")} ₺ toplam gider gösteriyor. TimesFM baz tahmini ${Math.round(scenario.baselineTotal).toLocaleString("tr-TR")} ₺. ${verifiedImpact} ${result.summary}`,
+        keyDrivers: changedIds.size
+          ? (focusIds.length ? focusIds : [...changedIds].slice(0, 2)).map(
+              (id) => {
+                const category = byId.get(id)!;
+                const assumption =
+                  category.adjustmentPercent > 0 ? "zam" : "indirim";
+                const categoryDirection =
+                  category.difference >= 0 ? "artış" : "azalış";
+                return `${category.label}: %${Math.abs(category.adjustmentPercent).toLocaleString("tr-TR")} ${assumption} varsayımı, ${Math.abs(category.difference).toLocaleString("tr-TR")} ₺ ${categoryDirection} etkisi.`;
+              },
+            )
+          : [
+              "Birim fiyat varsayımları değiştirilmedi; senaryo baz tahminle aynı kaldı.",
+            ],
+        recommendedActions: result.recommendedActions,
+      };
+    } catch (error) {
+      console.warn(
+        "Gemini billing scenario analysis unavailable or invalid:",
+        error instanceof Error ? `${error.name}: ${error.message}` : "unknown",
+      );
+      return {
+        ...(await this.fallback.analyze(scenario)),
+        fallbackReason:
+          "Gemini senaryo yorumu alınamadı veya doğrulanamadı; kural tabanlı açıklama kullanılıyor.",
+      };
+    }
+  }
+}
+
+const createBillingScenarioAnalysisProvider =
+  (): BillingScenarioAnalysisProvider =>
+    process.env.GEMINI_API_KEY
+      ? new GeminiBillingScenarioAnalysisProvider(process.env.GEMINI_API_KEY)
+      : new DeterministicBillingScenarioAnalysisProvider();
+
 export class BillingService {
   constructor(
     private forecaster: ForecastProvider = new PythonForecastProvider(),
     private analyst: BillingAnalysisProvider = createBillingAnalysisProvider(),
+    private scenarioAnalyst: BillingScenarioAnalysisProvider = createBillingScenarioAnalysisProvider(),
   ) {}
+
+  async scenario(
+    forecast: BillingForecast,
+    rawAdjustments: BillingScenarioAdjustments,
+  ): Promise<BillingScenario> {
+    const adjustments = billingScenarioAdjustmentsSchema.parse(rawAdjustments);
+    const scenarioCategories: BillingScenarioCategory[] =
+      forecast.categories.map((category) => {
+        const id = category.id as keyof BillingScenarioAdjustments;
+        const adjustmentPercent = adjustments[id];
+        let previousBaselineUnitPrice = category.forecast[0].unitPrice;
+        let previousScenarioUnitPrice = round(
+          previousBaselineUnitPrice * (1 + adjustmentPercent / 100),
+          3,
+        );
+        const points = category.forecast.map(
+          (baseline, index): BillingScenarioPoint => {
+            const priceTrend =
+              index === 0 ? 1 : baseline.unitPrice / previousBaselineUnitPrice;
+            const scenarioUnitPrice =
+              index === 0
+                ? previousScenarioUnitPrice
+                : round(previousScenarioUnitPrice * priceTrend, 3);
+            const scenarioAmount = round(
+              baseline.consumption * scenarioUnitPrice,
+            );
+            previousBaselineUnitPrice = baseline.unitPrice;
+            previousScenarioUnitPrice = scenarioUnitPrice;
+            return {
+              month: baseline.month,
+              label: baseline.label,
+              consumption: baseline.consumption,
+              baselineUnitPrice: baseline.unitPrice,
+              scenarioUnitPrice,
+              baselineAmount: baseline.amount,
+              scenarioAmount,
+              difference: scenarioAmount - baseline.amount,
+            };
+          },
+        );
+        const baselineTotal = points.reduce(
+          (sum, point) => sum + point.baselineAmount,
+          0,
+        );
+        const scenarioTotal = points.reduce(
+          (sum, point) => sum + point.scenarioAmount,
+          0,
+        );
+        return {
+          id,
+          label: category.label,
+          shortLabel: category.shortLabel,
+          icon: category.icon,
+          unit: category.unit,
+          color: category.color,
+          adjustmentPercent,
+          baselineTotal,
+          scenarioTotal,
+          difference: scenarioTotal - baselineTotal,
+          points,
+        };
+      });
+    const outlook = forecast.outlook.map(
+      (baseline, index): BillingScenarioTotalPoint => {
+        const scenarioAmount = scenarioCategories.reduce(
+          (sum, category) => sum + category.points[index].scenarioAmount,
+          0,
+        );
+        return {
+          month: baseline.month,
+          label: baseline.label,
+          baselineAmount: baseline.amount,
+          scenarioAmount,
+          difference: scenarioAmount - baseline.amount,
+        };
+      },
+    );
+    const baselineTotal = outlook.reduce(
+      (sum, point) => sum + point.baselineAmount,
+      0,
+    );
+    const scenarioTotal = scenarioCategories.reduce(
+      (sum, category) => sum + category.scenarioTotal,
+      0,
+    );
+    const withoutAnalysis = {
+      seed: forecast.seed,
+      currency: forecast.currency,
+      month: forecast.outlook[0].month,
+      label: `${forecast.outlook[0].label} – ${forecast.outlook.at(-1)!.label}`,
+      model: forecast.model,
+      forecastMonths: forecast.outlook.length,
+      baselineTotal,
+      scenarioTotal,
+      difference: scenarioTotal - baselineTotal,
+      changePercent: round((scenarioTotal / baselineTotal - 1) * 100, 1),
+      categories: scenarioCategories,
+      outlook,
+    } satisfies Omit<BillingScenario, "analysis">;
+    return {
+      ...withoutAnalysis,
+      analysis: await this.scenarioAnalyst.analyze(withoutAnalysis),
+    };
+  }
 
   async forecast(
     seed: number,

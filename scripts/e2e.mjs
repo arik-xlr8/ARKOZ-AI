@@ -273,6 +273,129 @@ try {
     await page.locator(".billing-provider-status > span").count(),
     2,
   );
+  const scenarioPanel = page.locator(".billing-scenario-panel");
+  await scenarioPanel.waitFor();
+  assert.equal(
+    await scenarioPanel.locator(".billing-scenario-builder").count(),
+    0,
+  );
+  await scenarioPanel.locator(".billing-scenario-toggle").click();
+  await scenarioPanel.locator(".billing-scenario-builder").waitFor();
+  assert.equal(
+    await scenarioPanel.locator(".billing-scenario-input-card").count(),
+    4,
+  );
+  await page.getByLabel("Elektrik yüzde değişim oranı").fill("12.5");
+  const fuelScenarioCard = scenarioPanel
+    .locator(".billing-scenario-input-card")
+    .filter({ hasText: "Doğal gaz ve yakıt" });
+  await fuelScenarioCard.getByRole("button", { name: "İndirim" }).click();
+  await page.getByLabel("Doğal gaz ve yakıt yüzde değişim oranı").fill("5");
+  const scenarioResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/billing/scenario") &&
+      response.status() === 200,
+  );
+  await scenarioPanel.getByRole("button", { name: "Tamam, hesapla" }).click();
+  const scenarioResponse = await scenarioResponsePromise;
+  const scenario = await scenarioResponse.json();
+  assert.equal(scenario.categories.length, 4);
+  assert.equal(
+    scenario.categories.find((category) => category.id === "electricity")
+      .adjustmentPercent,
+    12.5,
+  );
+  assert.equal(
+    scenario.categories.find((category) => category.id === "fuel")
+      .adjustmentPercent,
+    -5,
+  );
+  assert.equal(
+    scenario.scenarioTotal,
+    scenario.categories.reduce(
+      (sum, category) => sum + category.scenarioTotal,
+      0,
+    ),
+  );
+  assert.equal(scenario.forecastMonths, 6);
+  assert.equal(scenario.outlook.length, 6);
+  assert.ok(
+    scenario.categories.every((category) => category.points.length === 6),
+  );
+  await scenarioPanel.locator(".billing-scenario-results").waitFor();
+  await page.mouse.move(0, 0);
+  assert.equal(
+    await scenarioPanel
+      .getByRole("button", { name: "Tamam, hesapla" })
+      .evaluate((element) => getComputedStyle(element).borderColor),
+    "rgb(115, 95, 195)",
+  );
+  assert.equal(
+    await scenarioPanel
+      .locator(".billing-scenario-summary-grid article")
+      .count(),
+    3,
+  );
+  assert.equal(
+    await scenarioPanel.locator(".billing-scenario-chart-card").count(),
+    5,
+  );
+  assert.equal(
+    await scenarioPanel.locator(".billing-scenario-chart-card.total").count(),
+    1,
+  );
+  assert.equal(
+    await scenarioPanel.locator(".billing-scenario-month-group").count(),
+    30,
+  );
+  assert.equal(
+    await scenarioPanel.locator(".billing-scenario-bar-point").count(),
+    60,
+  );
+  assert.ok(
+    (await scenarioPanel.locator(".billing-scenario-ai > p").innerText())
+      .length > 20,
+  );
+  const scenarioAiFontSizes = await scenarioPanel
+    .locator(".billing-scenario-ai")
+    .evaluate((element) => ({
+      kicker: Number.parseFloat(
+        getComputedStyle(element.querySelector(":scope > header small"))
+          .fontSize,
+      ),
+      title: Number.parseFloat(
+        getComputedStyle(element.querySelector(":scope > header h3")).fontSize,
+      ),
+      summary: Number.parseFloat(
+        getComputedStyle(element.querySelector(":scope > p")).fontSize,
+      ),
+      heading: Number.parseFloat(
+        getComputedStyle(element.querySelector("section h4")).fontSize,
+      ),
+      item: Number.parseFloat(
+        getComputedStyle(element.querySelector("li")).fontSize,
+      ),
+      footer: Number.parseFloat(
+        getComputedStyle(element.querySelector("footer")).fontSize,
+      ),
+    }));
+  assert.deepEqual(scenarioAiFontSizes, {
+    kicker: 11,
+    title: 17,
+    summary: 15.5,
+    heading: 15,
+    item: 14.5,
+    footer: 13,
+  });
+  const scenarioPoint = scenarioPanel
+    .locator(".billing-scenario-bar-point")
+    .nth(1);
+  await scenarioPoint.hover();
+  await scenarioPoint.locator("chart-tooltip").waitFor();
+  assert.match(
+    await scenarioPoint.locator("chart-tooltip").innerText(),
+    /Baz tahmine fark/,
+  );
   const firstInvoice = await page
     .locator(".next-invoice-total strong")
     .innerText();

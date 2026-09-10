@@ -138,6 +138,57 @@ interface BillingForecast {
     fallbackReason?: string;
   };
 }
+interface BillingScenarioPoint {
+  month: string;
+  label: string;
+  consumption: number;
+  baselineUnitPrice: number;
+  scenarioUnitPrice: number;
+  baselineAmount: number;
+  scenarioAmount: number;
+  difference: number;
+}
+interface BillingScenarioCategory {
+  id: "electricity" | "fuel" | "raw-material" | "water";
+  label: string;
+  shortLabel: string;
+  icon: string;
+  unit: string;
+  color: string;
+  adjustmentPercent: number;
+  baselineTotal: number;
+  scenarioTotal: number;
+  difference: number;
+  points: BillingScenarioPoint[];
+}
+interface BillingScenarioTotalPoint {
+  month: string;
+  label: string;
+  baselineAmount: number;
+  scenarioAmount: number;
+  difference: number;
+}
+interface BillingScenario {
+  seed: number;
+  currency: "TRY";
+  month: string;
+  label: string;
+  model: string;
+  forecastMonths: number;
+  baselineTotal: number;
+  scenarioTotal: number;
+  difference: number;
+  changePercent: number;
+  categories: BillingScenarioCategory[];
+  outlook: BillingScenarioTotalPoint[];
+  analysis: {
+    provider: "gemini" | "deterministic";
+    summary: string;
+    keyDrivers: string[];
+    recommendedActions: string[];
+    fallbackReason?: string;
+  };
+}
 @Component({
   selector: "app-root",
   imports: [CommonModule, FormsModule, SensorChart, ChartTooltip],
@@ -145,6 +196,7 @@ interface BillingForecast {
 })
 class App implements OnDestroy {
   tr = tr;
+  Math = Math;
   translatedModels(models: string[]) {
     return models.map((model) => tr(model)).join(", ");
   }
@@ -182,6 +234,9 @@ class App implements OnDestroy {
   billing = signal<BillingForecast | null>(null);
   billingLoading = signal(false);
   showBillingHistory = signal(false);
+  billingScenarioOpen = signal(false);
+  billingScenarioLoading = signal(false);
+  billingScenario = signal<BillingScenario | null>(null);
   scenarios = signal<{ id: string; name: string }[]>([]);
   settings = signal<{
     thresholdLabel: string;
@@ -202,6 +257,47 @@ class App implements OnDestroy {
   simulationSeed = 20260908;
   billingSeed = 20260908;
   billingFocus = signal("electricity");
+  billingScenarioInputs: {
+    id: BillingScenarioCategory["id"];
+    label: string;
+    icon: string;
+    unit: string;
+    direction: "increase" | "decrease";
+    percent: number;
+  }[] = [
+    {
+      id: "electricity",
+      label: "Elektrik",
+      icon: "fa-solid fa-bolt",
+      unit: "kWh",
+      direction: "increase",
+      percent: 0,
+    },
+    {
+      id: "fuel",
+      label: "Doğal gaz ve yakıt",
+      icon: "fa-solid fa-fire-flame-curved",
+      unit: "Sm³",
+      direction: "increase",
+      percent: 0,
+    },
+    {
+      id: "raw-material",
+      label: "Hammadde ve katkı",
+      icon: "fa-solid fa-mountain",
+      unit: "ton",
+      direction: "increase",
+      percent: 0,
+    },
+    {
+      id: "water",
+      label: "Su",
+      icon: "fa-solid fa-droplet",
+      unit: "m³",
+      direction: "increase",
+      percent: 0,
+    },
+  ];
   scenarioId = "bearing";
   forecastMachine = "kiln-main-motor";
   forecastMetric = "vibration";
@@ -435,6 +531,25 @@ class App implements OnDestroy {
         })),
       };
     });
+  });
+  billingScenarioGraphItems = computed(() => {
+    const scenario = this.billingScenario();
+    if (!scenario) return [];
+    return [
+      ...scenario.categories,
+      {
+        id: "total" as const,
+        label: "Toplam fatura",
+        shortLabel: "Toplam",
+        icon: "fa-solid fa-file-invoice-dollar",
+        color: "#e0002a",
+        adjustmentPercent: scenario.changePercent,
+        baselineTotal: scenario.baselineTotal,
+        scenarioTotal: scenario.scenarioTotal,
+        difference: scenario.difference,
+        points: scenario.outlook,
+      },
+    ];
   });
   constructor() {
     if (this.authToken) {
@@ -861,6 +976,7 @@ class App implements OnDestroy {
           "/billing?seed=" + encodeURIComponent(seed),
         ),
       );
+      this.billingScenario.set(null);
       if (showFeedback)
         this.notice.set(
           `${seed} tohumu ile fatura geçmişi ve yeni tahmin oluşturuldu.`,
@@ -874,6 +990,107 @@ class App implements OnDestroy {
   randomizeBillingSeed() {
     this.billingSeed = Math.floor(Math.random() * 2_147_483_646) + 1;
     void this.loadBilling(true);
+  }
+  toggleBillingScenario() {
+    this.billingScenarioOpen.update((open) => !open);
+  }
+  resetBillingScenario() {
+    this.billingScenarioInputs.forEach((input) => {
+      input.direction = "increase";
+      input.percent = 0;
+    });
+    this.billingScenario.set(null);
+  }
+  async runBillingScenario() {
+    if (this.billingScenarioLoading() || !this.billing()) return;
+    this.billingScenarioLoading.set(true);
+    this.notice.set("");
+    try {
+      const adjustments = Object.fromEntries(
+        this.billingScenarioInputs.map((input) => {
+          const numeric = Number(input.percent);
+          const magnitude = Math.max(
+            0,
+            Math.min(
+              input.direction === "decrease" ? 100 : 500,
+              Number.isFinite(numeric) ? numeric : 0,
+            ),
+          );
+          input.percent = magnitude;
+          return [
+            input.id,
+            input.direction === "decrease" ? -magnitude : magnitude,
+          ];
+        }),
+      );
+      this.billingScenario.set(
+        await this.api<BillingScenario>("/billing/scenario", {
+          seed: this.billing()!.seed,
+          adjustments,
+        }),
+      );
+      this.notice.set(
+        "Fatura senaryosu TimesFM baz tahmini üzerinde hesaplandı ve yorumlandı.",
+      );
+    } catch (e) {
+      this.fail(e);
+    } finally {
+      this.billingScenarioLoading.set(false);
+    }
+  }
+  billingScenarioBasePrice(id: BillingScenarioCategory["id"]) {
+    return (
+      this.billing()?.categories.find((category) => category.id === id)
+        ?.forecast[0].unitPrice ?? 0
+    );
+  }
+  billingScenarioInputLabel(input: {
+    direction: "increase" | "decrease";
+    percent: number;
+  }) {
+    const numeric = Math.abs(Number(input.percent) || 0);
+    if (numeric === 0) return "Değişiklik yok";
+    return `%${numeric.toLocaleString("tr-TR")} ${input.direction === "increase" ? "zam" : "indirim"}`;
+  }
+  formatBillingScenarioDifference(amount: number) {
+    if (amount === 0) return "0,0 MN ₺";
+    return `${amount > 0 ? "+" : "−"}${this.formatBillingCompact(Math.abs(amount))}`;
+  }
+  billingScenarioBarHeight(
+    amount: number,
+    points: { baselineAmount: number; scenarioAmount: number }[],
+  ) {
+    const maximum = Math.max(
+      1,
+      ...points.flatMap((point) => [
+        point.baselineAmount,
+        point.scenarioAmount,
+      ]),
+    );
+    return Math.max(9, (amount / maximum) * 100);
+  }
+  billingScenarioTooltipRows(
+    point: {
+      baselineAmount: number;
+      scenarioAmount: number;
+      difference: number;
+    },
+    scenarioValue: boolean,
+  ): ChartTooltipRow[] {
+    const rows: ChartTooltipRow[] = [
+      {
+        label: "Tutar",
+        value: this.formatBillingCurrency(
+          scenarioValue ? point.scenarioAmount : point.baselineAmount,
+        ),
+      },
+    ];
+    if (scenarioValue)
+      rows.push({
+        label: "Baz tahmine fark",
+        value: `${point.difference >= 0 ? "+" : "−"}${this.formatBillingCurrency(Math.abs(point.difference))}`,
+      });
+    return rows;
   }
   formatBillingCurrency(amount: number) {
     return `${Math.round(amount).toLocaleString("tr-TR")} ₺`;

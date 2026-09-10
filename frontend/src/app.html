@@ -1310,6 +1310,326 @@
       </footer>
     </section>
 
+    <section
+      class="panel billing-scenario-panel"
+      [class.open]="billingScenarioOpen()"
+    >
+      <div class="billing-scenario-row">
+        <div class="billing-scenario-title">
+          <span><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+          <div>
+            <strong>Fatura senaryosu</strong>
+            <small
+              >Gelecek 6 ayın birim fiyat varsayımlarını karşılaştırın</small
+            >
+          </div>
+        </div>
+        <button
+          type="button"
+          class="secondary billing-scenario-toggle"
+          [attr.aria-expanded]="billingScenarioOpen()"
+          (click)="toggleBillingScenario()"
+        >
+          <i
+            [class]="billingScenarioOpen()?'fa-solid fa-chevron-up':'fa-solid fa-plus'"
+          ></i>
+          {{ billingScenarioOpen() ? "Kapat" : "Oluştur" }}
+        </button>
+      </div>
+
+      @if(billingScenarioOpen()){
+      <div class="billing-scenario-builder">
+        <div class="billing-scenario-info">
+          <i class="fa-solid fa-circle-info"></i>
+          <p>
+            Oran ilk ayın fiyatına uygulanır. Sonraki beş ay, bir önceki yeni
+            fiyat üzerinden TimesFM’in aylar arası eğilimiyle ilerler. Tüketim
+            miktarlarını da altı ay boyunca TimesFM tahmin eder.
+          </p>
+        </div>
+
+        <form class="billing-scenario-form" (ngSubmit)="runBillingScenario()">
+          <div class="billing-scenario-input-grid">
+            @for(input of billingScenarioInputs;track input.id){
+            <article class="billing-scenario-input-card">
+              <header>
+                <span><i [class]="input.icon"></i></span>
+                <div>
+                  <strong>{{input.label}}</strong>
+                  <small
+                    >Baz fiyat:
+                    {{billingScenarioBasePrice(input.id)|number:'1.2-3'}}
+                    ₺/{{input.unit}}</small
+                  >
+                </div>
+              </header>
+              <div
+                class="billing-scenario-direction"
+                role="group"
+                [attr.aria-label]="input.label + ' değişim yönü'"
+              >
+                <button
+                  type="button"
+                  [class.active]="input.direction==='increase'"
+                  (click)="input.direction='increase'"
+                >
+                  <i class="fa-solid fa-arrow-trend-up"></i> Zam
+                </button>
+                <button
+                  type="button"
+                  [class.active]="input.direction==='decrease'"
+                  (click)="input.direction='decrease'"
+                >
+                  <i class="fa-solid fa-arrow-trend-down"></i> İndirim
+                </button>
+              </div>
+              <label>
+                <span>Değişim oranı</span>
+                <span class="billing-scenario-percent-input">
+                  <input
+                    type="number"
+                    min="0"
+                    [max]="input.direction==='decrease'?100:500"
+                    step="0.5"
+                    inputmode="decimal"
+                    [name]="'billing-scenario-' + input.id"
+                    [(ngModel)]="input.percent"
+                    [attr.aria-label]="input.label + ' yüzde değişim oranı'"
+                  />
+                  <b>%</b>
+                </span>
+              </label>
+              <small
+                class="billing-scenario-input-result"
+                [class.discount]="input.direction==='decrease'&&input.percent>0"
+                >{{billingScenarioInputLabel(input)}}</small
+              >
+            </article>
+            }
+          </div>
+          <div class="billing-scenario-actions">
+            <button
+              type="button"
+              class="text-button"
+              [disabled]="billingScenarioLoading()"
+              (click)="resetBillingScenario()"
+            >
+              <i class="fa-solid fa-arrow-rotate-left"></i> Sıfırla
+            </button>
+            <button
+              type="submit"
+              class="primary"
+              [disabled]="billingScenarioLoading()"
+            >
+              <i
+                class="fa-solid fa-calculator"
+                [class.fa-beat-fade]="billingScenarioLoading()"
+              ></i>
+              {{billingScenarioLoading()?'Senaryo hesaplanıyor…':'Tamam,
+              hesapla'}}
+            </button>
+          </div>
+        </form>
+
+        @if(billingScenarioLoading()){
+        <div class="billing-scenario-loading" role="status">
+          <i class="fa-solid fa-circle-notch fa-spin"></i>
+          TimesFM baz tahmini uygulanıyor ve Gemini yorumu hazırlanıyor…
+        </div>
+        } @if(billingScenario();as scenario){
+        <div class="billing-scenario-results">
+          <div class="billing-scenario-result-heading">
+            <div>
+              <span class="eyebrow">{{scenario.label}} · 6 AYLIK SENARYO</span>
+              <h2>Altı aylık baz tahmin ve yeni fatura karşılaştırması</h2>
+            </div>
+            <span
+              class="billing-scenario-total-delta"
+              [class.decrease]="scenario.difference<0"
+              [class.unchanged]="scenario.difference===0"
+            >
+              <i
+                [class]="scenario.difference<0?'fa-solid fa-arrow-trend-down':'fa-solid fa-arrow-trend-up'"
+              ></i>
+              {{ formatBillingScenarioDifference(scenario.difference) }}
+            </span>
+          </div>
+
+          <div class="billing-scenario-summary-grid">
+            <article>
+              <span>6 AYLIK TIMESFM BAZ TAHMİNİ</span>
+              <strong>{{formatBillingCompact(scenario.baselineTotal)}}</strong>
+              <small>{{formatBillingCurrency(scenario.baselineTotal)}}</small>
+            </article>
+            <article class="scenario-value">
+              <span>6 AYLIK SENARYO FATURASI</span>
+              <strong>{{formatBillingCompact(scenario.scenarioTotal)}}</strong>
+              <small>{{formatBillingCurrency(scenario.scenarioTotal)}}</small>
+            </article>
+            <article
+              class="difference-value"
+              [class.decrease]="scenario.difference<0"
+              [class.unchanged]="scenario.difference===0"
+            >
+              <span>TOPLAM ETKİ</span>
+              <strong
+                >{{formatBillingScenarioDifference(scenario.difference)}}</strong
+              >
+              <small
+                >{{scenario.difference===0?'Değişiklik
+                yok':'%'+(Math.abs(scenario.changePercent)|number:'1.1-1')+'
+                '+(scenario.difference<0?'azalış':'artış')}}</small
+              >
+            </article>
+          </div>
+
+          <div class="billing-scenario-chart-heading">
+            <div>
+              <h3>Kalem bazında karşılaştırma grafiği</h3>
+              <p>
+                Her satırda gelecek altı ayın baz ve senaryo değerleri bulunur.
+              </p>
+            </div>
+            <div class="billing-scenario-legend">
+              <span><i class="baseline"></i>TimesFM baz tahmini</span>
+              <span><i class="scenario"></i>Yeni senaryo</span>
+            </div>
+          </div>
+          <div
+            class="billing-scenario-chart-grid"
+            role="img"
+            aria-label="TimesFM baz tahmini ve fatura senaryosu karşılaştırma grafiği"
+          >
+            @for(item of billingScenarioGraphItems();track item.id){
+            <article
+              class="billing-scenario-chart-card"
+              [class.total]="item.id==='total'"
+            >
+              <header>
+                <span><i [class]="item.icon"></i> {{item.shortLabel}}</span>
+                <small>6 aylık toplam etki</small>
+                <b
+                  [class.decrease]="item.difference<0"
+                  [class.unchanged]="item.difference===0"
+                >
+                  {{formatBillingScenarioDifference(item.difference)}}
+                </b>
+              </header>
+              <div class="billing-scenario-months-scroll">
+                <div class="billing-scenario-months">
+                  @for(point of item.points;track point.month){
+                  <div class="billing-scenario-month-group">
+                    <strong>{{point.label}}</strong>
+                    <div class="billing-scenario-pair">
+                      <div
+                        class="billing-scenario-bar-point chart-data-point"
+                        tabindex="0"
+                        [attr.aria-label]="item.label + ' ' + point.label + ' TimesFM baz tahmini ' + formatBillingCurrency(point.baselineAmount)"
+                      >
+                        <b>{{formatBillingCompact(point.baselineAmount)}}</b>
+                        <span class="billing-scenario-bar-track">
+                          <i
+                            class="billing-scenario-bar baseline"
+                            [style.height.%]="billingScenarioBarHeight(point.baselineAmount,item.points)"
+                          ></i>
+                        </span>
+                        <small>Baz</small>
+                        <chart-tooltip
+                          [title]="item.label + ' · ' + point.label"
+                          subtitle="TIMESFM BAZ TAHMİNİ"
+                          [rows]="billingScenarioTooltipRows(point,false)"
+                          placement="bottom"
+                          align="start"
+                        />
+                      </div>
+                      <div
+                        class="billing-scenario-bar-point chart-data-point"
+                        tabindex="0"
+                        [attr.aria-label]="item.label + ' ' + point.label + ' senaryo tutarı ' + formatBillingCurrency(point.scenarioAmount)"
+                      >
+                        <b>{{formatBillingCompact(point.scenarioAmount)}}</b>
+                        <span class="billing-scenario-bar-track">
+                          <i
+                            class="billing-scenario-bar scenario"
+                            [class.decrease]="point.difference<0"
+                            [class.unchanged]="point.difference===0"
+                            [style.height.%]="billingScenarioBarHeight(point.scenarioAmount,item.points)"
+                          ></i>
+                        </span>
+                        <small>Senaryo</small>
+                        <chart-tooltip
+                          [title]="item.label + ' · ' + point.label"
+                          subtitle="YENİ SENARYO"
+                          [rows]="billingScenarioTooltipRows(point,true)"
+                          placement="bottom"
+                          align="end"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  }
+                </div>
+              </div>
+            </article>
+            }
+          </div>
+
+          <div class="billing-scenario-ai">
+            <header>
+              <span><i class="fa-solid fa-hexagon-nodes-bolt"></i></span>
+              <div>
+                <small>YAPAY ZEKÂ SENARYO DEĞERLENDİRMESİ</small>
+                <h3>
+                  {{scenario.analysis.provider==='gemini'?'Gemini
+                  yorumu':'Senaryo değerlendirmesi'}}
+                </h3>
+              </div>
+              <b [class.fallback]="scenario.analysis.provider!=='gemini'"
+                >{{scenario.analysis.provider==='gemini'?'GEMINI':'YEDEK
+                YORUM'}}</b
+              >
+            </header>
+            <p>{{scenario.analysis.summary}}</p>
+            <div>
+              <section>
+                <h4><i class="fa-solid fa-chart-column"></i> Fiyat etkileri</h4>
+                <ul>
+                  @for(driver of scenario.analysis.keyDrivers;track driver){
+                  <li>{{driver}}</li>
+                  }
+                </ul>
+              </section>
+              <section>
+                <h4>
+                  <i class="fa-solid fa-list-check"></i> Önerilen kontroller
+                </h4>
+                <ul>
+                  @for(action of scenario.analysis.recommendedActions;track
+                  action){
+                  <li>{{action}}</li>
+                  }
+                </ul>
+              </section>
+            </div>
+            @if(scenario.analysis.fallbackReason){
+            <small class="billing-ai-fallback">
+              <i class="fa-solid fa-circle-info"></i>
+              {{scenario.analysis.fallbackReason}}
+            </small>
+            }
+            <footer>
+              Tüketimi ve baz fiyat eğilimini {{tr(scenario.model)}} tahmin
+              eder. Değişim ilk aya uygulanır, sonraki aylar yeni fiyat ve
+              TimesFM eğilimi üzerinden sırayla hesaplanır; Gemini altı aylık
+              sonucu yorumlar.
+            </footer>
+          </div>
+        </div>
+        }
+      </div>
+      }
+    </section>
+
     <section class="panel billing-table-panel">
       <div class="section-heading">
         <div>
