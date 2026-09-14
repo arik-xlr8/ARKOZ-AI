@@ -53,3 +53,11 @@ Alan adı bağlandıktan sonra Nginx yapılandırmasındaki `server_name _;` sat
 ## Hostinger Business Hosting frontend
 
 Angular üretim çıktısındaki `frontend/dist/browser` içeriği alan adının `public_html` dizinine yüklenir. `deploy/hostinger` içindeki `.htaccess` ve `api` dizini de aynı konuma kopyalanır. PHP proxy, tarayıcının aynı alan adındaki `/api` isteklerini VPS API'sine aktarır; böylece frontend Hostinger'ın HTTPS hizmetini kullanırken API istekleri tarayıcıda karma içerik veya CORS hatası oluşturmaz.
+
+Windows üzerinden build, yükleme ve dosya izinlerini tek adımda uygulamak için:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy/hostinger/publish.ps1
+```
+
+Betik `branding`, `media` ve `api` klasörlerini `755`, içlerindeki dosyaları `644` yapar. Bu izin adımı atlanırsa Hostinger web sunucusu Font Awesome fontlarını veya PNG görsellerini okuyamayabilir.
