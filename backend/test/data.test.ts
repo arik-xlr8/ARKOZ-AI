@@ -1,7 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MockFactoryData, scenarioOffset } from "../src/data.js";
-test("seven-day data are repeatable, varied and include a recovered spike", () => {
+import {
+  HISTORY_POINTS,
+  MockFactoryData,
+  scenarioOffset,
+} from "../src/data.js";
+test("28-day data are repeatable, varied and include a recovered spike", () => {
   const a = new MockFactoryData(),
     b = new MockFactoryData();
   a.reset(true);
@@ -11,7 +15,7 @@ test("seven-day data are repeatable, varied and include a recovered spike", () =
     a.history("crusher", "vibration"),
     b.history("crusher", "vibration"),
   );
-  assert.equal(a.history("crusher", "vibration").length, 673);
+  assert.equal(a.history("crusher", "vibration").length, HISTORY_POINTS);
   assert.ok(
     Math.max(...a.history("crusher", "vibration").map((p) => p.value)) > 6,
   );
@@ -44,7 +48,9 @@ test("autonomous factory creates repeatable faults and process effects", () => {
     b.history("kiln-main-motor", "vibration"),
   );
   assert.deepEqual(a.simulationEvents, b.simulationEvents);
-  const onset = a.simulationEvents.find((event) => event.type === "FAULT_ONSET");
+  const onset = a.simulationEvents.find(
+    (event) => event.type === "FAULT_ONSET",
+  );
   const impact = a.simulationEvents.find(
     (event) => event.type === "PROCESS_IMPACT",
   );
@@ -65,7 +71,10 @@ test("autonomous factory creates repeatable faults and process effects", () => {
     (machine) => machine.id === onset.machineId,
   )!;
   assert.equal(maintainedMachine.lastMaintenanceDate, a.now.slice(0, 10));
-  assert.equal(maintainedMachine.maintenanceHistory.at(-1)!.title, "Rulman kontrolü");
+  assert.equal(
+    maintainedMachine.maintenanceHistory.at(-1)!.title,
+    "Rulman kontrolü",
+  );
   assert.ok(
     a.simulationEvents.some((event) => event.type === "MAINTENANCE_EFFECT"),
   );

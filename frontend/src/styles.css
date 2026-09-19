@@ -1468,66 +1468,86 @@ footer > span:last-child {
 sensor-chart {
   display: block;
 }
+
+.sensor-chart-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 5px;
+}
+
+.sensor-chart-ranges {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #dedfe2;
+  border-radius: 10px;
+  background: #f5f5f6;
+}
+
+.sensor-chart-ranges button {
+  min-height: 29px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #5c6067;
+  font:
+    700 11px Manrope,
+    "DM Sans",
+    sans-serif;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.sensor-chart-ranges button:hover {
+  color: var(--brand);
+  background: #fff;
+}
+
+.sensor-chart-ranges button.active {
+  color: #fff;
+  background: var(--brand);
+  box-shadow: 0 2px 8px rgba(224, 0, 42, 0.2);
+}
+
+.sensor-chart-ranges button:focus-visible {
+  outline: 2px solid rgba(224, 0, 42, 0.35);
+  outline-offset: 2px;
+}
+
+.sensor-chart-window {
+  color: #62666d;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
 .sensor-chart-canvas {
   position: relative;
-}
-sensor-chart svg {
-  display: block;
   width: 100%;
-  overflow: visible;
+  height: 310px;
+  touch-action: pan-y;
 }
-.sensor-chart-point {
-  position: absolute;
-  z-index: 5;
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  transform: translate(-50%, -50%);
-}
-.sensor-chart-point > i {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 7px;
-  height: 7px;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: var(--brand);
-  box-shadow: 0 0 0 2px rgba(224, 0, 42, 0.2);
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0.7);
-  transition:
-    opacity 130ms ease,
-    transform 150ms ease;
-}
-.sensor-chart-point.forecast > i {
-  background: var(--purple);
-  box-shadow: 0 0 0 2px rgba(115, 95, 195, 0.23);
-}
-.sensor-chart-point:hover,
-.sensor-chart-point:focus-visible {
-  z-index: 25;
-  outline: none;
-}
-.sensor-chart-point:hover > i,
-.sensor-chart-point:focus-visible > i {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-}
-sensor-chart svg text {
-  fill: #495965;
-  font:
-    11px "DM Sans",
-    Arial,
-    sans-serif;
-}
+
 .chart-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
   font-size: 11px;
   color: #54646e;
-  margin: 8px 0 0;
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.chart-note i {
+  color: var(--brand);
 }
 .history-item {
   display: flex;
@@ -1641,8 +1661,8 @@ sensor-chart svg text {
 .large-chart .section-heading {
   padding: 0 0 24px;
 }
-.large-chart sensor-chart svg {
-  max-height: 430px;
+.large-chart .sensor-chart-canvas {
+  height: 390px;
 }
 .crossing {
   background: #f1f1f6;
@@ -2570,6 +2590,27 @@ sensor-chart svg text {
     align-items: flex-start;
     flex-direction: column;
     font-size: 13px;
+  }
+  .sensor-chart-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .sensor-chart-ranges {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+  }
+  .sensor-chart-ranges button {
+    min-width: 0;
+    padding-inline: 5px;
+    font-size: 10px;
+  }
+  .sensor-chart-window {
+    font-size: 10px;
+  }
+  .sensor-chart-canvas,
+  .large-chart .sensor-chart-canvas {
+    height: 280px;
   }
   .sensor {
     padding: 13px;

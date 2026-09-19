@@ -452,13 +452,23 @@ try {
     .getByRole("button", { name: "Bakım görevi oluştur", exact: true })
     .waitFor();
   assert.equal(await page.locator("sensor-chart").count(), 2);
-  assert.ok(await page.locator("sensor-chart path").first().getAttribute("d"));
-  const sensorPoint = page.locator("sensor-chart .sensor-chart-point").last();
-  await sensorPoint.hover();
-  const sensorTooltip = sensorPoint.locator("chart-tooltip");
-  await sensorTooltip.waitFor();
-  assert.match(await sensorTooltip.innerText(), /Değer/);
-  assert.match(await sensorTooltip.innerText(), /Uyarı eşiği/);
+  await page.locator("sensor-chart canvas").first().waitFor();
+  const firstSensorChart = page.locator("sensor-chart").first();
+  assert.equal(
+    await firstSensorChart
+      .locator(".sensor-chart-canvas")
+      .getAttribute("data-range"),
+    "7d",
+  );
+  await firstSensorChart
+    .getByRole("button", { name: "14 gün", exact: true })
+    .click();
+  assert.equal(
+    await firstSensorChart
+      .locator(".sensor-chart-canvas")
+      .getAttribute("data-range"),
+    "14d",
+  );
   await page.screenshot({
     path: "docs/screenshots/machine-detail.png",
     fullPage: true,

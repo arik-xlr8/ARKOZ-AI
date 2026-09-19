@@ -12,6 +12,7 @@ import { tr } from "./locale.js";
 import { AutonomousPlant, STEPS_PER_DAY } from "./autonomous.js";
 export const INTERVAL = 15 * 60 * 1000;
 export const SEED_TIME = Date.parse("2026-09-08T06:00:00Z");
+export const HISTORY_POINTS = 28 * 24 * 4 + 1;
 const sensor = (
   metric: string,
   label: string,
@@ -228,7 +229,7 @@ export class MockFactoryData implements SensorDataSource {
     });
     this.machines.forEach((m, index) =>
       m.sensors.forEach((s, j) => {
-        const points = Array.from({ length: 673 }, (_, i) => {
+        const points = Array.from({ length: HISTORY_POINTS }, (_, i) => {
           let value =
             s.base *
             (1 +
@@ -239,17 +240,19 @@ export class MockFactoryData implements SensorDataSource {
             m.id === "cement-mill-2" &&
             s.metric === "power"
           )
-            value += 420 * Math.max(0, (i - 624) / 48);
+            value += 420 * Math.max(0, (i - (HISTORY_POINTS - 49)) / 48);
           if (
             includeSeedEvents &&
             m.id === "crusher" &&
             s.metric === "vibration" &&
-            i >= 620 &&
-            i <= 624
+            i >= HISTORY_POINTS - 53 &&
+            i <= HISTORY_POINTS - 49
           )
-            value += 3 * Math.sin(((i - 620) / 4) * Math.PI);
+            value += 3 * Math.sin(((i - (HISTORY_POINTS - 53)) / 4) * Math.PI);
           return {
-            timestamp: new Date(SEED_TIME - (672 - i) * INTERVAL).toISOString(),
+            timestamp: new Date(
+              SEED_TIME - (HISTORY_POINTS - 1 - i) * INTERVAL,
+            ).toISOString(),
             value: +value.toFixed(3),
           };
         });
@@ -283,16 +286,20 @@ export class MockFactoryData implements SensorDataSource {
     return Math.floor(this.step / STEPS_PER_DAY);
   }
   get conditions(): MachineCondition[] {
-    return [...(this.autonomous?.conditions.values() ?? [])].map((condition) => ({
-      ...condition,
-      processImpactFrom: [...condition.processImpactFrom],
-    }));
+    return [...(this.autonomous?.conditions.values() ?? [])].map(
+      (condition) => ({
+        ...condition,
+        processImpactFrom: [...condition.processImpactFrom],
+      }),
+    );
   }
   get simulationEvents(): SimulationEvent[] {
     return (this.autonomous?.events ?? []).map((event) => ({ ...event }));
   }
   completeMaintenance(machineId: string, title = "Bakım görevi") {
-    const machine = this.machines.find((candidate) => candidate.id === machineId);
+    const machine = this.machines.find(
+      (candidate) => candidate.id === machineId,
+    );
     if (!machine) return;
     const date = this.now.slice(0, 10);
     machine.lastMaintenanceDate = date;
@@ -338,7 +345,7 @@ export class MockFactoryData implements SensorDataSource {
             : 0);
         const points = this.history(m.id, s.metric);
         points.push({ timestamp: this.now, value: +value.toFixed(3) });
-        if (points.length > 2689) points.shift();
+        if (points.length > HISTORY_POINTS) points.shift();
       }
     for (const machine of this.machines) machine.operatingHours += 0.25;
   }
